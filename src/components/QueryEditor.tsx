@@ -4,11 +4,11 @@ import React, { ChangeEvent, PureComponent } from 'react';
 import { LegacyForms } from '@grafana/ui';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../datasource';
-import { defaultQuery, MyDataSourceOptions, MyQuery } from '../types';
+import { defaultQuery, DataSourceOptions, Query } from '../types';
 
 const { FormField } = LegacyForms;
 
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
   onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -21,6 +21,7 @@ export class QueryEditor extends PureComponent<Props> {
     onChange({ ...query, constant: parseFloat(event.target.value) });
     // executes the query
     onRunQuery();
+
   };
 
   render() {
