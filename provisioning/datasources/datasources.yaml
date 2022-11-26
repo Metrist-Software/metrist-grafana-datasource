@@ -1,3 +1,4 @@
+# NOTE: Comment out this file if you want to configure the plugin from the UI
 # config file version
 apiVersion: 1
 
