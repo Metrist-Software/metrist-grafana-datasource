@@ -1,19 +1,32 @@
-# Grafana data source plugin template
-
-This template is a starting point for building a Data Source Plugin for Grafana.
-
-## What are Grafana data source plugins?
-
-Grafana supports a wide range of data sources, including Prometheus, MySQL, and even Datadog. There’s a good chance you can already visualize metrics from the systems you have set up. In some cases, though, you already have an in-house metrics solution that you’d like to add to your Grafana dashboards. Grafana Data Source Plugins enables integrating such solutions with Grafana.
+# Metrist Datasource for Grafana
 
 ## Getting started
+
+Add the golang and mage plugin through asdf and install the required versions stated in `.tool-versions`
+
+```bash
+ asdf plugin-add golang
+ asdf plugin-add mage
+ asdf install
+```
+
+Quickest way to get started is to run 
+
+```bash
+npm install
+go get
+mage -v         # Build the backend
+npm run dev     # Build the frontend
+npm run server  # Run the grana instance
+```
+
 
 ### Frontend
 
 1. Install dependencies
 
    ```bash
-   npm run install
+   npm install
    ```
 
 2. Build plugin in development mode or run in watch mode
@@ -73,8 +86,7 @@ Grafana supports a wide range of data sources, including Prometheus, MySQL, and 
 1. Update [Grafana plugin SDK for Go](https://grafana.com/docs/grafana/latest/developers/plugins/backend/grafana-plugin-sdk-for-go/) dependency to the latest minor version:
 
    ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
-   go mod tidy
+   go get
    ```
 
 2. Build backend plugin binaries for Linux, Windows and Darwin:
