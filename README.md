@@ -13,6 +13,7 @@ Add the golang and mage plugin through asdf and install the required versions st
 Quickest way to get started is to run 
 
 ```bash
+npm install npm@8 -g # Make sure you have NPM version 8 to avoid grafana-e2e cli issue
 npm install
 go get
 mage -v         # Build the backend
