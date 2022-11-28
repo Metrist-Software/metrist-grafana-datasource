@@ -1,5 +1,5 @@
 {
-  "name": "metrist",
+  "name": "metrist-datasource",
   "version": "0.0.1",
   "description": "",
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint --cache --ignore-path ./.gitignore --ext .js,.jsx,.ts,.tsx .",
     "lint:fix": "npm run lint --fix",
-    "e2e": "npm run cypress install && yarn grafana-e2e run",
-    "e2e:update": "npm run cypress install && yarn grafana-e2e run --update-screenshots",
+    "e2e": "cypress install && grafana-e2e run",
+    "e2e:update": "cypress install && grafana-e2e run --update-screenshots",
     "server": "docker-compose up --build"
   },
   "author": "Metrist",
