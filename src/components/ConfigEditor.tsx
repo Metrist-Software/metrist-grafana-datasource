@@ -10,18 +10,9 @@ interface Props extends DataSourcePluginOptionsEditorProps<DataSourceOptions> {}
 interface State {}
 
 export class ConfigEditor extends PureComponent<Props, State> {
-  onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      path: event.target.value,
-    };
-    onOptionsChange({ ...options, jsonData });
-  };
-
-  // Secure field (only sent to the backend)
   onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
+    console.log(options.secureJsonData, "securejson data")
     onOptionsChange({
       ...options,
       secureJsonData: {
@@ -49,6 +40,7 @@ export class ConfigEditor extends PureComponent<Props, State> {
     const { options } = this.props;
     const { secureJsonFields } = options;
     const secureJsonData = (options.secureJsonData || {}) as SecureJsonData;
+    console.log(secureJsonFields)
 
     return (
       <div className="gf-form-group">

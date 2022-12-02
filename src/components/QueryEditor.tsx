@@ -1,50 +1,78 @@
 import defaults from 'lodash/defaults';
 
-import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms } from '@grafana/ui';
-import { QueryEditorProps } from '@grafana/data';
+import React, { PureComponent } from 'react';
+import { InlineField, InlineFieldRow, MultiSelect, Select } from '@grafana/ui';
+import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
-
-const { FormField } = LegacyForms;
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
-  onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query } = this.props;
-    onChange({ ...query, queryText: event.target.value });
+  queryTypeChange = (val: SelectableValue<string>) => {
+    const { onChange, query, onRunQuery } = this.props;
+    onChange({ ...query, queryType: val.value as string });
+    onRunQuery();
   };
 
-  onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
+  onMonitorsChange = (vals: Array<SelectableValue<string>>) => {
     const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
+    onChange({ ...query, monitors: vals.map(v => v.value as string) });
     onRunQuery();
-
   };
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { queryText, constant } = query;
+    const { monitors, queryType } = query;
 
     return (
       <div className="gf-form">
-        <FormField
-          width={4}
-          value={constant}
-          onChange={this.onConstantChange}
-          label="Constant"
-          type="number"
-          step="0.1"
-        />
-        <FormField
-          labelWidth={8}
-          value={queryText || ''}
-          onChange={this.onQueryTextChange}
-          label="Query Text"
-          tooltip="Not used yet"
-        />
+        <InlineFieldRow>
+          <InlineField label="Type" labelWidth={14}>
+            <Select
+              options={[{
+                label: 'Errors',
+                value: 'GetMonitorErrors'
+              },
+              {
+                label: 'Telemetry',
+                value: 'GetMonitorTelemetry'
+              },
+              {
+                label: 'Status Page Changes',
+                value: 'GetMonitorStatusPageChanges'
+              },
+              {
+                label: 'Status',
+                value: 'GetMonitorStatus'
+              }
+              ]}
+              width={32}
+              value={queryType}
+              onChange={this.queryTypeChange}
+            />
+          </InlineField>
+          <InlineField label="Monitor" labelWidth={14}>
+            <MultiSelect
+              options={[{
+                label: 'AWS Lambda',
+                value: 'awslambda'
+              },
+              {
+                label: 'AWS EKS',
+                value: 'awseks'
+              },
+              {
+                label: 'Heroku',
+                value: 'heroku'
+              }
+              ]}
+              width={32}
+              value={monitors}
+              onChange={this.onMonitorsChange}
+            />
+          </InlineField>
+        </InlineFieldRow>
       </div>
     );
   }
