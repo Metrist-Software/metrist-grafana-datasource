@@ -75,13 +75,12 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
 
-	includeshared := true
 	resp, err := client.BackendWebMonitorTelemetryControllerGetWithResponse(ctx,
 		&internal.BackendWebMonitorTelemetryControllerGetParams{
 			From:          from,
 			To:            &to,
 			M:             &monitorTelemetryQuery.Monitors,
-			IncludeShared: &includeshared,
+			IncludeShared: &monitorTelemetryQuery.IncludeShared,
 		},
 		withAPIKey(apiKey))
 
@@ -165,13 +164,6 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
 }
 
-func withAPIKey(apiKey string) internal.RequestEditorFn {
-	return func(ctx context.Context, req *http.Request) error {
-		req.Header.Add("Authorization", apiKey)
-		return nil
-	}
-}
-
 func QueryMonitorStatus(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
 	var monitorTelemetryQuery monitorTelemetryQuery
 
@@ -212,4 +204,11 @@ func QueryMonitorStatus(ctx context.Context, query backend.DataQuery, client int
 	}
 
 	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
+}
+
+func withAPIKey(apiKey string) internal.RequestEditorFn {
+	return func(ctx context.Context, req *http.Request) error {
+		req.Header.Add("Authorization", apiKey)
+		return nil
+	}
 }

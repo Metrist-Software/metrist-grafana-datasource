@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
-import React, { PureComponent } from 'react';
-import { InlineField, InlineFieldRow, MultiSelect, Select } from '@grafana/ui';
+import React, { ChangeEvent, PureComponent } from 'react';
+import { InlineField, InlineFieldRow, InlineSwitch, MultiSelect, Select } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
@@ -21,12 +21,18 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
+  onSharedDataChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query, onRunQuery } = this.props;
+    onChange({ ...query, includeShared: event.currentTarget.checked });
+    onRunQuery();
+  };
+
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { monitors, queryType } = query;
+    const { monitors, queryType, includeShared } = query;
 
     return (
-      <div className="gf-form">
+      <div style={{ width: '100%' }}>
         <InlineFieldRow>
           <InlineField label="Type" labelWidth={14}>
             <Select
@@ -70,6 +76,12 @@ export class QueryEditor extends PureComponent<Props> {
               width={32}
               value={monitors}
               onChange={this.onMonitorsChange}
+            />
+          </InlineField>
+          <InlineField label="Include Shared Data">
+            <InlineSwitch
+              value={includeShared}
+              onChange={this.onSharedDataChange}
             />
           </InlineField>
         </InlineFieldRow>
