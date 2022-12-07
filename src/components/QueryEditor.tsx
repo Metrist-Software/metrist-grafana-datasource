@@ -27,9 +27,29 @@ export class QueryEditor extends PureComponent<Props> {
     onRunQuery();
   };
 
+  additionalFormFields = (queryType: string | undefined) => {
+    const query = defaults(this.props.query, defaultQuery);
+    switch (queryType) {
+      case 'GetMonitorErrors':
+      case 'GetMonitorTelemetry':
+        return (
+          <InlineField label="Include Shared Data">
+            <InlineSwitch
+              value={query.includeShared}
+              onChange={this.onSharedDataChange}
+            />
+          </InlineField>
+        )
+      case 'GetMonitorStatusPageChanges':
+      case 'GetMonitorStatus':
+      default:
+        return <></>
+    }
+  }
+
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { monitors, queryType, includeShared } = query;
+    const { monitors, queryType } = query;
 
     return (
       <div style={{ width: '100%' }}>
@@ -78,12 +98,7 @@ export class QueryEditor extends PureComponent<Props> {
               onChange={this.onMonitorsChange}
             />
           </InlineField>
-          <InlineField label="Include Shared Data">
-            <InlineSwitch
-              value={includeShared}
-              onChange={this.onSharedDataChange}
-            />
-          </InlineField>
+          {this.additionalFormFields(queryType)}
         </InlineFieldRow>
       </div>
     );
