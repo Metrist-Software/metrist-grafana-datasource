@@ -22,11 +22,20 @@ go get
 go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest # Required for openapi codegen
 asdf reshim
 
-mage -v         # Build the backend
-npm run dev     # Build the frontend
-npm run server  # Build the datasource backend & run grafana server
+mage -v                     # Build the backend
+npm run dev                 # Build the frontend
+npm run server              # Run grafana server
+npm run server:with-plugin  # Run grafana server with the datasource plugin ready to be installed
 ```
 
+
+#### Running the Frontend, Backend and Installing the plugin
+
+1. Run `npm run server:with-plugin`
+2. In a separate terminal run the frontend `npm run dev`
+3. Head over to `http://localhost:3000/datasources` -> `Add data source` -> Search for `Metrist`
+4. Click on the `Metrist` plugin. This will install the plugin
+5. Configure the `API Key` and click `Save and test` 
 
 ### Frontend
 
