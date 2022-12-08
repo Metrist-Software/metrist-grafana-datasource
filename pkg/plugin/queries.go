@@ -19,6 +19,7 @@ const (
 	DataFrameMonitorStatus            = "status"
 )
 
+// QueryMonitorErrors queries `/monitor-telemetry`
 func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
@@ -67,6 +68,7 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
 }
 
+// QueryMonitorErrors queries `/monitor-telemetry`
 func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
@@ -118,6 +120,7 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 }
 
+// QueryMonitorErrors queries `/status-page-changes`
 func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
@@ -164,6 +167,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
 }
 
+// QueryMonitorErrors queries `/monitor-status`
 func QueryMonitorStatus(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
 	var monitorTelemetryQuery monitorTelemetryQuery
 

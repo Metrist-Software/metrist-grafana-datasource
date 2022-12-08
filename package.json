@@ -12,7 +12,7 @@
     "lint:fix": "npm run lint --fix",
     "e2e": "cypress install && grafana-e2e run",
     "e2e:update": "cypress install && grafana-e2e run --update-screenshots",
-    "server": "docker-compose up --build"
+    "server": "mage -v && docker-compose up --build"
   },
   "author": "Metrist",
   "license": "Apache-2.0",

@@ -62,6 +62,7 @@ func (d *Datasource) Dispose() {
 	d.httpClient.CloseIdleConnections()
 }
 
+// QueryData go through each query and routes them to the appropriate query handler
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 	log.DefaultLogger.Debug("QueryData called", "numQueries", len(req.Queries))
 
