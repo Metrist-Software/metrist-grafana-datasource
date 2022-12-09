@@ -142,7 +142,7 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 				Name: DataFrameMonitorStatusPageChanges,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("", data.Labels{"component": "component1", "monitor": "monitor"}, []float64{0}),
+					data.NewField("", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{0}),
 				},
 				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
 			}},
