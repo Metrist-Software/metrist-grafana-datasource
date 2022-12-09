@@ -164,9 +164,13 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		frame.AppendRow(timestamp, spcStatusToFloat(*te.Status), *te.Component, *te.MonitorLogicalName)
 	}
 
-	z, _ := data.LongToWide(frame, nil)
+	longFrame, err := data.LongToWide(frame, nil)
 
-	for idx, field := range z.Fields {
+	if err != nil {
+		return backend.DataResponse{}, err
+	}
+
+	for idx, field := range longFrame.Fields {
 		if idx == 0 {
 			continue
 		}
@@ -179,7 +183,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		})
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{z}}, nil
+	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
 }
 
 func spcStatusToFloat(status string) float64 {
