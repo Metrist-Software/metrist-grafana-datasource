@@ -112,8 +112,6 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return QueryMonitorTelemetry(ctx, query, d.openApiClient, apiKey)
 	case "GetMonitorStatusPageChanges":
 		return QueryMonitorStatusPageChanges(ctx, query, d.openApiClient, apiKey)
-	case "GetMonitorStatus":
-		return QueryMonitorStatus(ctx, query, d.openApiClient, apiKey)
 	default:
 		return backend.DataResponse{}, nil
 	}

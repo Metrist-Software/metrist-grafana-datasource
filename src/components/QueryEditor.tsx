@@ -67,10 +67,6 @@ export class QueryEditor extends PureComponent<Props> {
               {
                 label: 'Status Page Changes',
                 value: 'GetMonitorStatusPageChanges'
-              },
-              {
-                label: 'Status',
-                value: 'GetMonitorStatus'
               }
               ]}
               width={32}

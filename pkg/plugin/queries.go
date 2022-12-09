@@ -193,49 +193,6 @@ func spcStatusToFloat(status string) float64 {
 	return result
 }
 
-// QueryMonitorErrors queries `/monitor-status`
-func QueryMonitorStatus(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
-	var monitorTelemetryQuery monitorTelemetryQuery
-
-	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
-	}
-
-	resp, err := client.BackendWebMonitorStatusControllerGetWithResponse(ctx,
-		&internal.BackendWebMonitorStatusControllerGetParams{
-			M: monitorTelemetryQuery.Monitors,
-		}, withAPIKey(apiKey))
-
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-
-	if len(*resp.JSON200) == 0 {
-		return backend.DataResponse{}, nil
-	}
-
-	responses := *resp.JSON200
-	frame := &data.Frame{
-		Name: DataFrameMonitorStatusPageChanges,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("state", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
-	}
-
-	for _, te := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *te.LastChecked)
-		if err != nil {
-			log.DefaultLogger.Error("error while parsing status page changes time %w", err)
-			continue
-		}
-		frame.AppendRow(timestamp, *te.State, *te.MonitorLogicalName)
-	}
-
-	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
-}
-
 func withAPIKey(apiKey string) internal.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("Authorization", apiKey)
