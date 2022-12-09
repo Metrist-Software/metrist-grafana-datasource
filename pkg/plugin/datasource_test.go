@@ -142,10 +142,9 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 				Name: DataFrameMonitorStatusPageChanges,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("status", nil, []string{"up"}),
-					data.NewField("component", nil, []string{"component1"}),
-					data.NewField("monitor", nil, []string{"monitor"}),
+					data.NewField("", data.Labels{"component": "component1", "monitor": "monitor"}, []float64{0}),
 				},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
 			}},
 		},
 		{
@@ -174,6 +173,12 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 			}
 			if len(resp.Responses) != 1 {
 				t.Fatal("QueryData must return a response")
+			}
+			// We dont care about the field config when testing
+			for _, frame := range resp.Responses["A"].Frames {
+				for _, field := range frame.Fields {
+					field.Config = nil
+				}
 			}
 			if diff := cmp.Diff(test.want, resp.Responses["A"].Frames, data.FrameTestCompareOptions()...); diff != "" {
 				t.Errorf("Result mismatch (-want +got):\n%s", diff)

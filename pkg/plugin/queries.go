@@ -149,7 +149,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		Name: DataFrameMonitorStatusPageChanges,
 		Fields: []*data.Field{
 			data.NewField("time", nil, []time.Time{}),
-			data.NewField("status", nil, []string{}),
+			data.NewField("", nil, []float64{}),
 			data.NewField("component", nil, []string{}),
 			data.NewField("monitor", nil, []string{}),
 		},
@@ -161,10 +161,36 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 			log.DefaultLogger.Error("error while parsing status page changes time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, *te.Status, *te.Component, *te.MonitorLogicalName)
+		frame.AppendRow(timestamp, spcStatusToFloat(*te.Status), *te.Component, *te.MonitorLogicalName)
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
+	z, _ := data.LongToWide(frame, nil)
+
+	for idx, field := range z.Fields {
+		if idx == 0 {
+			continue
+		}
+		field.SetConfig(&data.FieldConfig{
+			Mappings: data.ValueMappings{
+				data.ValueMapper{"0": data.ValueMappingResult{Text: "up", Color: "green"}},
+				data.ValueMapper{"1": data.ValueMappingResult{Text: "degraded", Color: "yellow"}},
+				data.ValueMapper{"2": data.ValueMappingResult{Text: "error", Color: "red"}},
+			},
+		})
+	}
+
+	return backend.DataResponse{Frames: []*data.Frame{z}}, nil
+}
+
+func spcStatusToFloat(status string) float64 {
+	statuses := map[string]float64{
+		"up":          0,
+		"operational": 0,
+		"degraded":    1,
+		"down":        2,
+	}
+	result := statuses[status]
+	return result
 }
 
 // QueryMonitorErrors queries `/monitor-status`
