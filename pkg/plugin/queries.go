@@ -172,9 +172,9 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		}
 		field.SetConfig(&data.FieldConfig{
 			Mappings: data.ValueMappings{
-				data.ValueMapper{"0": data.ValueMappingResult{Text: "up", Color: "green"}},
-				data.ValueMapper{"1": data.ValueMappingResult{Text: "degraded", Color: "yellow"}},
-				data.ValueMapper{"2": data.ValueMappingResult{Text: "error", Color: "red"}},
+				data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
+				data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
+				data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
 			},
 		})
 	}
