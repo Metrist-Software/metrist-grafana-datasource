@@ -49,23 +49,29 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		Name: DataFrameMonitorErrors,
 		Fields: []*data.Field{
 			data.NewField("time", nil, []time.Time{}),
-			data.NewField("errorString", nil, []string{}),
+			data.NewField("", nil, []int8{}),
 			data.NewField("instance", nil, []string{}),
 			data.NewField("check", nil, []string{}),
 			data.NewField("monitor", nil, []string{}),
 		},
 	}
 
+	var value int8 = 1
 	for _, monitorError := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
 		if err != nil {
 			log.DefaultLogger.Error("error while parsing monitor error time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, *monitorError.ErrorString, *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
+		frame.AppendRow(timestamp, value, *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{frame}}, nil
+	f, err := data.LongToWide(frame, nil)
+	if err != nil {
+		return backend.DataResponse{}, err
+	}
+
+	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
 }
 
 // QueryMonitorErrors queries `/monitor-telemetry`
@@ -115,7 +121,10 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
 	}
 
-	f, _ := data.LongToWide(frame, nil)
+	f, err := data.LongToWide(frame, nil)
+	if err != nil {
+		return backend.DataResponse{}, err
+	}
 	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
 
 }
@@ -149,7 +158,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		Name: DataFrameMonitorStatusPageChanges,
 		Fields: []*data.Field{
 			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []float64{}),
+			data.NewField("", nil, []int8{}),
 			data.NewField("component", nil, []string{}),
 			data.NewField("monitor", nil, []string{}),
 		},
@@ -186,8 +195,8 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
 }
 
-func spcStatusToFloat(status string) float64 {
-	statuses := map[string]float64{
+func spcStatusToFloat(status string) int8 {
+	statuses := map[string]int8{
 		"up":          0,
 		"operational": 0,
 		"degraded":    1,

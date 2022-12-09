@@ -216,11 +216,9 @@ func TestQueryMonitorErrors(t *testing.T) {
 				Name: DataFrameMonitorErrors,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("errorString", nil, []string{"error"}),
-					data.NewField("instance", nil, []string{"us-east-1"}),
-					data.NewField("check", nil, []string{"check"}),
-					data.NewField("monitor", nil, []string{"monitor"}),
+					data.NewField("", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int8{1}),
 				},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
 			}},
 		},
 		{
