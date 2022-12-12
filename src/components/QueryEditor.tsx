@@ -1,50 +1,101 @@
 import defaults from 'lodash/defaults';
 
 import React, { ChangeEvent, PureComponent } from 'react';
-import { LegacyForms } from '@grafana/ui';
-import { QueryEditorProps } from '@grafana/data';
+import { InlineField, InlineFieldRow, InlineSwitch, MultiSelect, Select } from '@grafana/ui';
+import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
-
-const { FormField } = LegacyForms;
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export class QueryEditor extends PureComponent<Props> {
-  onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query } = this.props;
-    onChange({ ...query, queryText: event.target.value });
-  };
-
-  onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
+  queryTypeChange = (val: SelectableValue<string>) => {
     const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
+    onChange({ ...query, queryType: val.value as string });
     onRunQuery();
-
   };
+
+  onMonitorsChange = (vals: Array<SelectableValue<string>>) => {
+    const { onChange, query, onRunQuery } = this.props;
+    onChange({ ...query, monitors: vals.map(v => v.value as string) });
+    onRunQuery();
+  };
+
+  onSharedDataChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query, onRunQuery } = this.props;
+    onChange({ ...query, includeShared: event.currentTarget.checked });
+    onRunQuery();
+  };
+
+  additionalFormFields = (queryType: string | undefined) => {
+    const query = defaults(this.props.query, defaultQuery);
+    switch (queryType) {
+      case 'GetMonitorErrors':
+      case 'GetMonitorTelemetry':
+        return (
+          <InlineField label="Include Shared Data">
+            <InlineSwitch
+              value={query.includeShared}
+              onChange={this.onSharedDataChange}
+            />
+          </InlineField>
+        )
+      case 'GetMonitorStatusPageChanges':
+      case 'GetMonitorStatus':
+      default:
+        return <></>
+    }
+  }
 
   render() {
     const query = defaults(this.props.query, defaultQuery);
-    const { queryText, constant } = query;
+    const { monitors, queryType } = query;
 
     return (
-      <div className="gf-form">
-        <FormField
-          width={4}
-          value={constant}
-          onChange={this.onConstantChange}
-          label="Constant"
-          type="number"
-          step="0.1"
-        />
-        <FormField
-          labelWidth={8}
-          value={queryText || ''}
-          onChange={this.onQueryTextChange}
-          label="Query Text"
-          tooltip="Not used yet"
-        />
+      <div style={{ width: '100%' }}>
+        <InlineFieldRow>
+          <InlineField label="Type" labelWidth={14}>
+            <Select
+              options={[{
+                label: 'Errors',
+                value: 'GetMonitorErrors'
+              },
+              {
+                label: 'Telemetry',
+                value: 'GetMonitorTelemetry'
+              },
+              {
+                label: 'Status Page Changes',
+                value: 'GetMonitorStatusPageChanges'
+              }
+              ]}
+              width={32}
+              value={queryType}
+              onChange={this.queryTypeChange}
+            />
+          </InlineField>
+          <InlineField label="Monitor" labelWidth={14}>
+            <MultiSelect
+              options={[{
+                label: 'AWS Lambda',
+                value: 'awslambda'
+              },
+              {
+                label: 'AWS EKS',
+                value: 'awseks'
+              },
+              {
+                label: 'Heroku',
+                value: 'heroku'
+              }
+              ]}
+              width={32}
+              value={monitors}
+              onChange={this.onMonitorsChange}
+            />
+          </InlineField>
+          {this.additionalFormFields(queryType)}
+        </InlineFieldRow>
       </div>
     );
   }

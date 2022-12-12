@@ -10,16 +10,6 @@ interface Props extends DataSourcePluginOptionsEditorProps<DataSourceOptions> {}
 interface State {}
 
 export class ConfigEditor extends PureComponent<Props, State> {
-  onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onOptionsChange, options } = this.props;
-    const jsonData = {
-      ...options.jsonData,
-      path: event.target.value,
-    };
-    onOptionsChange({ ...options, jsonData });
-  };
-
-  // Secure field (only sent to the backend)
   onAPIKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onOptionsChange, options } = this.props;
     onOptionsChange({
