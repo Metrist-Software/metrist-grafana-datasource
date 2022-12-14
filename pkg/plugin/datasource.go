@@ -22,6 +22,7 @@ import (
 var (
 	_ backend.QueryDataHandler      = (*Datasource)(nil)
 	_ backend.CheckHealthHandler    = (*Datasource)(nil)
+	_ backend.CallResourceHandler   = (*Datasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
@@ -56,6 +57,22 @@ type Datasource struct {
 	settings      backend.DataSourceInstanceSettings
 	httpClient    *http.Client
 	openApiClient internal.ClientWithResponsesInterface
+}
+
+// CallResource implements backend.CallResourceHandler
+func (*Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	switch req.Path {
+	case "monitors":
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusOK,
+			// TODO: Fetch from backend
+			Body: []byte(`{"monitors": [{"value": "awslambda", "label": "AWS Lambda"}] }`),
+		})
+	default:
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusNotFound,
+		})
+	}
 }
 
 func (d *Datasource) Dispose() {

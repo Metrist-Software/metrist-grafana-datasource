@@ -1,34 +1,46 @@
 import defaults from 'lodash/defaults';
 
-import React, { ChangeEvent, PureComponent } from 'react';
-import { InlineField, InlineFieldRow, InlineSwitch, MultiSelect, Select } from '@grafana/ui';
+import React, { ChangeEvent, useEffect, useState } from 'react';
+import { InlineField, InlineFieldRow, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
-export class QueryEditor extends PureComponent<Props> {
-  queryTypeChange = (val: SelectableValue<string>) => {
-    const { onChange, query, onRunQuery } = this.props;
+export const QueryEditor = (props: Props) => {
+  const [monitorSelect, setMonitors] = useState();
+
+  useEffect(() => {
+    const dataFetch = async () => {
+      const {monitors: result} = await props.datasource.getResource('monitors');
+      setMonitors(result);
+      console.log(result, "hello")
+    };
+    dataFetch();
+  }, [props.datasource]);
+
+
+  const queryTypeChange = (val: SelectableValue<string>) => {
+    const { onChange, query, onRunQuery } = props;
     onChange({ ...query, queryType: val.value as string });
     onRunQuery();
   };
 
-  onMonitorsChange = (vals: Array<SelectableValue<string>>) => {
-    const { onChange, query, onRunQuery } = this.props;
+  const onMonitorsChange = (vals: Array<SelectableValue<string>>) => {
+    const { onChange, query, onRunQuery } = props;
     onChange({ ...query, monitors: vals.map(v => v.value as string) });
     onRunQuery();
   };
 
-  onSharedDataChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query, onRunQuery } = this.props;
+  const onSharedDataChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query, onRunQuery } = props;
     onChange({ ...query, includeShared: event.currentTarget.checked });
     onRunQuery();
   };
 
-  additionalFormFields = (queryType: string | undefined) => {
-    const query = defaults(this.props.query, defaultQuery);
+  const additionalFormFields = (queryType: string | undefined) => {
+    const query = defaults(props.query, defaultQuery);
     switch (queryType) {
       case 'GetMonitorErrors':
       case 'GetMonitorTelemetry':
@@ -36,7 +48,7 @@ export class QueryEditor extends PureComponent<Props> {
           <InlineField label="Include Shared Data">
             <InlineSwitch
               value={query.includeShared}
-              onChange={this.onSharedDataChange}
+              onChange={onSharedDataChange}
             />
           </InlineField>
         )
@@ -48,62 +60,47 @@ export class QueryEditor extends PureComponent<Props> {
     }
   }
 
-  render() {
-    const query = defaults(this.props.query, defaultQuery);
-    const { monitors, queryType } = query;
 
-    return (
-      <div style={{ width: '100%' }}>
-        <InlineFieldRow>
-          <InlineField label="Type" labelWidth={14}>
-            <Select
-              options={[{
-                label: 'Errors',
-                value: 'GetMonitorErrors'
-              },
-              {
-                label: 'Telemetry',
-                value: 'GetMonitorTelemetry'
-              },
-              {
-                label: 'Status Page Changes',
-                value: 'GetMonitorStatusPageChanges'
-              },
-              {
-                label: 'Monitor List3',
-                value: 'GetMonitorList'
-              }
+  const query = defaults(props.query, defaultQuery);
+  const { monitors, queryType } = query;
 
-
-              ]}
-              width={32}
-              value={queryType}
-              onChange={this.queryTypeChange}
-            />
-          </InlineField>
-          <InlineField label="Monitor" labelWidth={14}>
-            <MultiSelect
-              options={[{
-                label: 'AWS Lambda',
-                value: 'awslambda'
-              },
-              {
-                label: 'AWS EKS',
-                value: 'awseks'
-              },
-              {
-                label: 'Heroku',
-                value: 'heroku'
-              }
-              ]}
-              width={32}
-              value={monitors}
-              onChange={this.onMonitorsChange}
-            />
-          </InlineField>
-          {this.additionalFormFields(queryType)}
-        </InlineFieldRow>
-      </div>
-    );
+  if(!monitors) {
+    return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
   }
+
+  return (
+    <div style={{ width: '100%' }}>
+      <InlineFieldRow>
+        <InlineField label="Type" labelWidth={14}>
+          <Select
+            options={[{
+              label: 'Errors',
+              value: 'GetMonitorErrors'
+            },
+            {
+              label: 'Telemetry',
+              value: 'GetMonitorTelemetry'
+            },
+            {
+              label: 'Status Page Changes',
+              value: 'GetMonitorStatusPageChanges'
+            }
+            ]}
+            width={32}
+            value={queryType}
+            onChange={queryTypeChange}
+          />
+        </InlineField>
+        <InlineField label="Monitor" labelWidth={14}>
+          <MultiSelect
+            options={monitorSelect}
+            width={32}
+            value={monitors}
+            onChange={onMonitorsChange}
+          />
+        </InlineField>
+        {additionalFormFields(queryType)}
+      </InlineFieldRow>
+    </div>
+  );
 }
