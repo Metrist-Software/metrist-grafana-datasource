@@ -40,6 +40,7 @@ export class QueryEditor extends PureComponent<Props> {
             />
           </InlineField>
         )
+      case 'GetMonitorList':
       case 'GetMonitorStatusPageChanges':
       case 'GetMonitorStatus':
       default:
@@ -67,7 +68,13 @@ export class QueryEditor extends PureComponent<Props> {
               {
                 label: 'Status Page Changes',
                 value: 'GetMonitorStatusPageChanges'
+              },
+              {
+                label: 'Monitor List3',
+                value: 'GetMonitorList'
               }
+
+
               ]}
               width={32}
               value={queryType}

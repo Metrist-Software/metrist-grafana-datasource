@@ -11,3 +11,4 @@ type monitorTelemetryQuery struct {
 	Monitors      []string `json:"monitors"`
 	IncludeShared bool     `json:"includeshared"`
 }
+

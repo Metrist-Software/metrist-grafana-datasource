@@ -112,6 +112,8 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return QueryMonitorTelemetry(ctx, query, d.openApiClient, apiKey)
 	case "GetMonitorStatusPageChanges":
 		return QueryMonitorStatusPageChanges(ctx, query, d.openApiClient, apiKey)
+	case "GetMonitorList":
+		return QueryMonitorList(ctx, query, d.openApiClient, apiKey)
 	default:
 		return backend.DataResponse{}, nil
 	}
@@ -121,14 +123,36 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 // The main use case for these health checks is the test button on the
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
-func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	log.DefaultLogger.Debug("CheckHealth called")
 
-	var status = backend.HealthStatusOk
-	var message = "Data source is working"
+	apiKey, ok := req.PluginContext.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
+
+	if !ok {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: "api key not found",
+		}, nil
+	}
+
+	var resp *internal.BackendWebVerifyAuthControllerGetResponse
+	var err error 
+	resp, err = d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
+	print(resp)
+	print(err)
+	var status = resp.StatusCode()
+	var message = "Data source is not working"
+	var statusconverted backend.HealthStatus
+	statusconverted = backend.HealthStatusError
+
+	if (status == 200) {
+		statusconverted = backend.HealthStatusOk
+		message = "Data source is working"
+	}
+
 
 	return &backend.CheckHealthResult{
-		Status:  status,
+		Status:  statusconverted,
 		Message: message,
 	}, nil
 }

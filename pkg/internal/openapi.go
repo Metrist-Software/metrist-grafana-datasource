@@ -89,6 +89,9 @@ type MonitorError struct {
 // MonitorErrors A collection of Monitor Errors
 type MonitorErrors = []MonitorError
 
+// MonitorList A list of monitors
+type MonitorList = []string
+
 // MonitorStatus A status for a single monitor
 type MonitorStatus struct {
 	// LastChecked The last time this monitor was checked by Metrist
@@ -286,6 +289,9 @@ type ClientInterface interface {
 	// BackendWebMonitorErrorControllerGet request
 	BackendWebMonitorErrorControllerGet(ctx context.Context, params *BackendWebMonitorErrorControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BackendWebMonitorListControllerGet request
+	BackendWebMonitorListControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BackendWebMonitorStatusControllerGet request
 	BackendWebMonitorStatusControllerGet(ctx context.Context, params *BackendWebMonitorStatusControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -294,6 +300,9 @@ type ClientInterface interface {
 
 	// BackendWebMonitorTelemetryControllerGet request
 	BackendWebMonitorTelemetryControllerGet(ctx context.Context, params *BackendWebMonitorTelemetryControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BackendWebVerifyAuthControllerGet request
+	BackendWebVerifyAuthControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) BackendWebMonitorConfigControllerPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -344,6 +353,18 @@ func (c *Client) BackendWebMonitorErrorControllerGet(ctx context.Context, params
 	return c.Client.Do(req)
 }
 
+func (c *Client) BackendWebMonitorListControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBackendWebMonitorListControllerGetRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) BackendWebMonitorStatusControllerGet(ctx context.Context, params *BackendWebMonitorStatusControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBackendWebMonitorStatusControllerGetRequest(c.Server, params)
 	if err != nil {
@@ -370,6 +391,18 @@ func (c *Client) BackendWebStatusPageChangeControllerGet(ctx context.Context, pa
 
 func (c *Client) BackendWebMonitorTelemetryControllerGet(ctx context.Context, params *BackendWebMonitorTelemetryControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBackendWebMonitorTelemetryControllerGetRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BackendWebVerifyAuthControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBackendWebVerifyAuthControllerGetRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -543,6 +576,33 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBackendWebMonitorListControllerGetRequest generates requests for BackendWebMonitorListControllerGet
+func NewBackendWebMonitorListControllerGetRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/monitor-list")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
@@ -761,6 +821,33 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 	return req, nil
 }
 
+// NewBackendWebVerifyAuthControllerGetRequest generates requests for BackendWebVerifyAuthControllerGet
+func NewBackendWebVerifyAuthControllerGetRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/verify-auth")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -815,6 +902,9 @@ type ClientWithResponsesInterface interface {
 	// BackendWebMonitorErrorControllerGet request
 	BackendWebMonitorErrorControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorErrorControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorErrorControllerGetResponse, error)
 
+	// BackendWebMonitorListControllerGet request
+	BackendWebMonitorListControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebMonitorListControllerGetResponse, error)
+
 	// BackendWebMonitorStatusControllerGet request
 	BackendWebMonitorStatusControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorStatusControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorStatusControllerGetResponse, error)
 
@@ -823,6 +913,9 @@ type ClientWithResponsesInterface interface {
 
 	// BackendWebMonitorTelemetryControllerGet request
 	BackendWebMonitorTelemetryControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorTelemetryControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorTelemetryControllerGetResponse, error)
+
+	// BackendWebVerifyAuthControllerGet request
+	BackendWebVerifyAuthControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebVerifyAuthControllerGetResponse, error)
 }
 
 type BackendWebMonitorConfigControllerPostResponse struct {
@@ -883,6 +976,28 @@ func (r BackendWebMonitorErrorControllerGetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r BackendWebMonitorErrorControllerGetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type BackendWebMonitorListControllerGetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *MonitorList
+}
+
+// Status returns HTTPResponse.Status
+func (r BackendWebMonitorListControllerGetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BackendWebMonitorListControllerGetResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -955,6 +1070,27 @@ func (r BackendWebMonitorTelemetryControllerGetResponse) StatusCode() int {
 	return 0
 }
 
+type BackendWebVerifyAuthControllerGetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r BackendWebVerifyAuthControllerGetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BackendWebVerifyAuthControllerGetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // BackendWebMonitorConfigControllerPostWithBodyWithResponse request with arbitrary body returning *BackendWebMonitorConfigControllerPostResponse
 func (c *ClientWithResponses) BackendWebMonitorConfigControllerPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BackendWebMonitorConfigControllerPostResponse, error) {
 	rsp, err := c.BackendWebMonitorConfigControllerPostWithBody(ctx, contentType, body, reqEditors...)
@@ -990,6 +1126,15 @@ func (c *ClientWithResponses) BackendWebMonitorErrorControllerGetWithResponse(ct
 	return ParseBackendWebMonitorErrorControllerGetResponse(rsp)
 }
 
+// BackendWebMonitorListControllerGetWithResponse request returning *BackendWebMonitorListControllerGetResponse
+func (c *ClientWithResponses) BackendWebMonitorListControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebMonitorListControllerGetResponse, error) {
+	rsp, err := c.BackendWebMonitorListControllerGet(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBackendWebMonitorListControllerGetResponse(rsp)
+}
+
 // BackendWebMonitorStatusControllerGetWithResponse request returning *BackendWebMonitorStatusControllerGetResponse
 func (c *ClientWithResponses) BackendWebMonitorStatusControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorStatusControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorStatusControllerGetResponse, error) {
 	rsp, err := c.BackendWebMonitorStatusControllerGet(ctx, params, reqEditors...)
@@ -1015,6 +1160,15 @@ func (c *ClientWithResponses) BackendWebMonitorTelemetryControllerGetWithRespons
 		return nil, err
 	}
 	return ParseBackendWebMonitorTelemetryControllerGetResponse(rsp)
+}
+
+// BackendWebVerifyAuthControllerGetWithResponse request returning *BackendWebVerifyAuthControllerGetResponse
+func (c *ClientWithResponses) BackendWebVerifyAuthControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebVerifyAuthControllerGetResponse, error) {
+	rsp, err := c.BackendWebVerifyAuthControllerGet(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBackendWebVerifyAuthControllerGetResponse(rsp)
 }
 
 // ParseBackendWebMonitorConfigControllerPostResponse parses an HTTP response from a BackendWebMonitorConfigControllerPostWithResponse call
@@ -1065,6 +1219,32 @@ func ParseBackendWebMonitorErrorControllerGetResponse(rsp *http.Response) (*Back
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest MonitorErrors
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBackendWebMonitorListControllerGetResponse parses an HTTP response from a BackendWebMonitorListControllerGetWithResponse call
+func ParseBackendWebMonitorListControllerGetResponse(rsp *http.Response) (*BackendWebMonitorListControllerGetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BackendWebMonitorListControllerGetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MonitorList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1148,6 +1328,22 @@ func ParseBackendWebMonitorTelemetryControllerGetResponse(rsp *http.Response) (*
 		}
 		response.JSON200 = &dest
 
+	}
+
+	return response, nil
+}
+
+// ParseBackendWebVerifyAuthControllerGetResponse parses an HTTP response from a BackendWebVerifyAuthControllerGetWithResponse call
+func ParseBackendWebVerifyAuthControllerGetResponse(rsp *http.Response) (*BackendWebVerifyAuthControllerGetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BackendWebVerifyAuthControllerGetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
 	}
 
 	return response, nil
