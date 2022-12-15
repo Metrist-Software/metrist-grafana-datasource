@@ -79,6 +79,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 	case "monitors":
 		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
 		if err != nil {
+			log.DefaultLogger.Error("resource monitor list error: %w", err)
 			return err
 		}
 		return sender.Send(&response)
@@ -135,9 +136,9 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
 
-	apiKey, ok := pCtx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
-	if !ok {
-		return backend.DataResponse{}, errMissingApiKey
+	apiKey, err := requireApiKey(pCtx)
+	if err != nil {
+		return backend.DataResponse{}, err
 	}
 
 	switch qm.QueryType {
@@ -157,8 +158,6 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
 func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	log.DefaultLogger.Debug("CheckHealth called")
-
 	apiKey, err := requireApiKey(req.PluginContext)
 	if err != nil {
 		return &backend.CheckHealthResult{
@@ -168,12 +167,9 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 	}
 
 	resp, err := d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
-
 	if err != nil {
-		return &backend.CheckHealthResult{
-			Status:  backend.HealthStatusError,
-			Message: err.Error(),
-		}, nil
+		log.DefaultLogger.Debug("verify auth controller error: %w", err)
+		return nil, err
 	}
 
 	switch resp.StatusCode() {

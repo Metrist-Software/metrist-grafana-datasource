@@ -6,14 +6,13 @@ import (
 	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/metrist/metrist/pkg/internal"
 )
 
+// ResourceMonitorList returns a list of monitors which is can be used by a select box
 func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponsesInterface, apiKey string) (backend.CallResourceResponse, error) {
 	resp, err := client.BackendWebMonitorListControllerGetWithResponse(ctx, withAPIKey(apiKey))
 	if err != nil {
-		log.DefaultLogger.Error("monitor list controller error: %w", err)
 		return backend.CallResourceResponse{}, err
 	}
 
@@ -29,7 +28,6 @@ func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponse
 
 	optionsJson, err := json.Marshal(options)
 	if err != nil {
-		log.DefaultLogger.Error("options json marshall error: %w", err)
 		return backend.CallResourceResponse{}, err
 	}
 
