@@ -184,7 +184,7 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 	default:
 		return &backend.CheckHealthResult{
 			Status:  backend.HealthStatusError,
-			Message: "Unauthorized: Invalid API Key",
+			Message: resp.Status(),
 		}, nil
 	}
 }
