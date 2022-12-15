@@ -90,7 +90,16 @@ type MonitorError struct {
 type MonitorErrors = []MonitorError
 
 // MonitorList A list of monitors
-type MonitorList = []string
+type MonitorList = []MonitorListEntry
+
+// MonitorListEntry A single monitor in the list
+type MonitorListEntry struct {
+	// LogicalName the logical name of the monitor
+	LogicalName *string `json:"logical_name,omitempty"`
+
+	// Name the name of the monitor
+	Name *string `json:"name,omitempty"`
+}
 
 // MonitorStatus A status for a single monitor
 type MonitorStatus struct {

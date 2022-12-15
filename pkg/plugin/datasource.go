@@ -94,7 +94,6 @@ func (d *Datasource) Dispose() {
 // QueryData go through each query and routes them to the appropriate query handler
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 	log.DefaultLogger.Debug("QueryData called", "numQueries", len(req.Queries))
-
 	response := backend.NewQueryDataResponse()
 
 	for _, q := range req.Queries {
