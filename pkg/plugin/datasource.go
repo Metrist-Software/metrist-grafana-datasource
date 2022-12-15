@@ -70,7 +70,10 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 	case "monitors":
 		resp, err := d.openApiClient.BackendWebMonitorListControllerGetWithResponse(ctx, withAPIKey(apiKey))
 		if err != nil {
-			return err
+			return sender.Send(&backend.CallResourceResponse{
+				Status: resp.StatusCode(),
+				Body:   resp.Body,
+			})
 		}
 
 		return sender.Send(&backend.CallResourceResponse{
@@ -138,8 +141,6 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return QueryMonitorTelemetry(ctx, query, d.openApiClient, apiKey)
 	case "GetMonitorStatusPageChanges":
 		return QueryMonitorStatusPageChanges(ctx, query, d.openApiClient, apiKey)
-	case "GetMonitorList":
-		return QueryMonitorList(ctx, query, d.openApiClient, apiKey)
 	default:
 		return backend.DataResponse{}, nil
 	}

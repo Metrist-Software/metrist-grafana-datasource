@@ -17,7 +17,7 @@ const (
 	DataFrameMonitorTelemetry         = "telemetry"
 	DataFrameMonitorStatusPageChanges = "status_page_changes"
 	DataFrameMonitorStatus            = "status"
-	DataFrameMonitorList           = "monitor_list"
+	DataFrameMonitorList              = "monitor_list"
 )
 
 // QueryMonitorErrors queries `/monitor-telemetry`
@@ -192,38 +192,6 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 			},
 		})
 	}
-
-	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
-}
-
-//Query Monitor List
-
-func QueryMonitorList(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
-
-	resp, err := client.BackendWebMonitorListControllerGetWithResponse(ctx,
-		withAPIKey(apiKey))
-
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-
-	if len(*resp.JSON200) == 0 {
-		return backend.DataResponse{}, nil
-	}
-
-	responses := *resp.JSON200
-	print(responses)
-
-	frame := &data.Frame{
-		Name: DataFrameMonitorList,
-		Fields: []*data.Field{
-			data.NewField("monitor", nil, []string{}),
-		},
-	}
-
-	longFrame, err := data.LongToWide(frame, nil)
-
-
 
 	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
 }
