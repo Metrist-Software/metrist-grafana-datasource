@@ -9,12 +9,11 @@ import { defaultQuery, DataSourceOptions, Query } from '../types';
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
-  const [monitorSelect, setMonitors] = useState<Array<{ name: string, monitor_logical_name: string }>>();
+  const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
 
   useEffect(() => {
     const dataFetch = async () => {
       const monitors = await props.datasource.getResource('monitors');
-      console.log(monitors)
       setMonitors(monitors);
     };
 
@@ -94,9 +93,7 @@ export const QueryEditor = (props: Props) => {
         </InlineField>
         <InlineField label="Monitor" labelWidth={14}>
           <MultiSelect
-            options={monitorSelect?.map(v => {
-              return { value: v.monitor_logical_name, label: v.name }
-            })}
+            options={monitorSelect}
             width={32}
             value={monitors}
             onChange={onMonitorsChange}

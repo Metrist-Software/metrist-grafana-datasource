@@ -63,23 +63,19 @@ type Datasource struct {
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	apiKey, err := requireApiKey(req.PluginContext)
 	if err != nil {
-		return err
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusUnauthorized,
+			Body:   []byte(err.Error()),
+		})
 	}
 
 	switch req.Path {
 	case "monitors":
-		resp, err := d.openApiClient.BackendWebMonitorListControllerGetWithResponse(ctx, withAPIKey(apiKey))
+		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
 		if err != nil {
-			return sender.Send(&backend.CallResourceResponse{
-				Status: resp.StatusCode(),
-				Body:   resp.Body,
-			})
+			return err
 		}
-
-		return sender.Send(&backend.CallResourceResponse{
-			Status: http.StatusOK,
-			Body:   resp.Body,
-		})
+		return sender.Send(&response)
 	default:
 		return sender.Send(&backend.CallResourceResponse{
 			Status: http.StatusNotFound,
