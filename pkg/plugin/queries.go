@@ -17,7 +17,6 @@ const (
 	DataFrameMonitorTelemetry         = "telemetry"
 	DataFrameMonitorStatusPageChanges = "status_page_changes"
 	DataFrameMonitorStatus            = "status"
-	DataFrameMonitorList              = "monitor_list"
 )
 
 // QueryMonitorErrors queries `/monitor-telemetry`
