@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
@@ -27,9 +28,14 @@ var (
 )
 
 var (
-	errRemoteRequest  = errors.New("remote request error")
-	errRemoteResponse = errors.New("remote response error")
-	errMissingApiKey  = errors.New("missing api key")
+	errRemoteRequest          = errors.New("remote request error")
+	errRemoteResponse         = errors.New("remote response error")
+	errMissingApiKey          = errors.New("missing api key")
+	errTimerangeLimitExceeded = errors.New("time range cannot exceed 3 months long")
+)
+
+const (
+	durationThreeMonths = 3 * 30 * 24 * time.Hour
 )
 
 // NewDatasource creates a new datasource instance.
@@ -93,8 +99,13 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	response := backend.NewQueryDataResponse()
 
 	for _, q := range req.Queries {
-		res, err := d.query(ctx, req.PluginContext, q)
+		if err := ensureTimeRangeWithinLimits(q.TimeRange.Duration()); err != nil {
+			log.DefaultLogger.Error("time range error: %w", err)
+			response.Responses[q.RefID] = backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+			continue
+		}
 
+		res, err := d.query(ctx, req.PluginContext, q)
 		if err != nil {
 			log.DefaultLogger.Error("error %v", err)
 		}
@@ -190,4 +201,12 @@ func requireApiKey(ctx backend.PluginContext) (string, error) {
 		return "", errMissingApiKey
 	}
 	return apiKey, nil
+}
+
+func ensureTimeRangeWithinLimits(duration time.Duration) error {
+	if duration > durationThreeMonths {
+		return errTimerangeLimitExceeded
+	}
+
+	return nil
 }
