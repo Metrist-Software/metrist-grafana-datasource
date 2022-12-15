@@ -9,13 +9,12 @@ import { defaultQuery, DataSourceOptions, Query } from '../types';
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
-  const [monitorSelect, setMonitors] = useState();
+  const [monitorSelect, setMonitors] = useState<Array<{ name: string, monitor_logical_name: string }>>();
 
   useEffect(() => {
     const dataFetch = async () => {
-      const {monitors: result} = await props.datasource.getResource('monitors');
+      const { monitors: result } = await props.datasource.getResource('monitors');
       setMonitors(result);
-      console.log(result, "hello")
     };
     dataFetch();
   }, [props.datasource]);
@@ -64,7 +63,7 @@ export const QueryEditor = (props: Props) => {
   const query = defaults(props.query, defaultQuery);
   const { monitors, queryType } = query;
 
-  if(!monitors) {
+  if (!monitors) {
     return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
   }
 
@@ -93,7 +92,9 @@ export const QueryEditor = (props: Props) => {
         </InlineField>
         <InlineField label="Monitor" labelWidth={14}>
           <MultiSelect
-            options={monitorSelect}
+            options={monitorSelect?.map(v => {
+              return { value: v.monitor_logical_name, label: v.name }
+            })}
             width={32}
             value={monitors}
             onChange={onMonitorsChange}

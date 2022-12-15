@@ -60,13 +60,22 @@ type Datasource struct {
 }
 
 // CallResource implements backend.CallResourceHandler
-func (*Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	apiKey, err := requireApiKey(req.PluginContext)
+	if err != nil {
+		return err
+	}
+
 	switch req.Path {
 	case "monitors":
+		resp, err := d.openApiClient.BackendWebMonitorListControllerGetWithResponse(ctx, withAPIKey(apiKey))
+		if err != nil {
+			return err
+		}
+
 		return sender.Send(&backend.CallResourceResponse{
 			Status: http.StatusOK,
-			// TODO: Fetch from backend
-			Body: []byte(`{"monitors": [{"value": "awslambda", "label": "AWS Lambda"}] }`),
+			Body:   resp.Body,
 		})
 	default:
 		return sender.Send(&backend.CallResourceResponse{
@@ -143,33 +152,46 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	log.DefaultLogger.Debug("CheckHealth called")
 
-	apiKey, ok := req.PluginContext.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
-
-	if !ok {
+	apiKey, err := requireApiKey(req.PluginContext)
+	if err != nil {
 		return &backend.CheckHealthResult{
 			Status:  backend.HealthStatusError,
-			Message: "api key not found",
+			Message: err.Error(),
 		}, nil
 	}
 
-	var resp *internal.BackendWebVerifyAuthControllerGetResponse
-	var err error 
-	resp, err = d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
-	print(resp)
-	print(err)
-	var status = resp.StatusCode()
-	var message = "Data source is not working"
-	var statusconverted backend.HealthStatus
-	statusconverted = backend.HealthStatusError
+	resp, err := d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
 
-	if (status == 200) {
-		statusconverted = backend.HealthStatusOk
-		message = "Data source is working"
+	if err != nil {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: err.Error(),
+		}, nil
 	}
 
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusOk,
+			Message: "Data source is working!",
+		}, nil
+	case http.StatusUnauthorized:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: "Unauthorized: Invalid API Key",
+		}, nil
+	default:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: "Unauthorized: Invalid API Key",
+		}, nil
+	}
+}
 
-	return &backend.CheckHealthResult{
-		Status:  statusconverted,
-		Message: message,
-	}, nil
+func requireApiKey(ctx backend.PluginContext) (string, error) {
+	apiKey, ok := ctx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
+	if !ok {
+		return "", errMissingApiKey
+	}
+	return apiKey, nil
 }
