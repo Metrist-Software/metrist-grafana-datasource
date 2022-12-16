@@ -56,7 +56,6 @@ export const QueryEditor = (props: Props) => {
             />
           </InlineField>
         )
-      case 'GetMonitorList':
       case 'GetMonitorStatusPageChanges':
       case 'GetMonitorStatus':
       default:
