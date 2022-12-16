@@ -17,7 +17,7 @@ func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponse
 	}
 
 	monitorList := *resp.JSON200
-	var options selectOptions
+	options := make(selectOptions, 0)
 
 	for _, monitor := range monitorList {
 		options = append(options, selectOption{
