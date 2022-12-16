@@ -60,31 +60,6 @@ type Datasource struct {
 	openApiClient internal.ClientWithResponsesInterface
 }
 
-// CallResource implements backend.CallResourceHandler
-func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
-	apiKey, err := requireApiKey(req.PluginContext)
-	if err != nil {
-		return sender.Send(&backend.CallResourceResponse{
-			Status: http.StatusUnauthorized,
-			Body:   []byte(err.Error()),
-		})
-	}
-
-	switch req.Path {
-	case "Monitors":
-		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
-		if err != nil {
-			log.DefaultLogger.Error("resource monitor list error: %w", err)
-			return err
-		}
-		return sender.Send(&response)
-	default:
-		return sender.Send(&backend.CallResourceResponse{
-			Status: http.StatusNotFound,
-		})
-	}
-}
-
 func (d *Datasource) Dispose() {
 	d.httpClient.CloseIdleConnections()
 }
@@ -186,9 +161,38 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 	}
 }
 
+// CallResource implements backend.CallResourceHandler
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	apiKey, err := requireApiKey(req.PluginContext)
+	if err != nil {
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusUnauthorized,
+			Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, err.Error())),
+		})
+	}
+
+	switch req.Path {
+	case "Monitors":
+		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
+		if err != nil {
+			log.DefaultLogger.Error("resource monitor list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	default:
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusNotFound,
+		})
+	}
+}
+
 func requireApiKey(ctx backend.PluginContext) (string, error) {
 	apiKey, ok := ctx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
-	if !ok {
+	log.DefaultLogger.Debug("api key %v", apiKey)
+	if !ok || apiKey == "" {
 		return "", errMissingApiKey
 	}
 	return apiKey, nil

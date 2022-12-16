@@ -13,8 +13,13 @@ export const QueryEditor = (props: Props) => {
 
   useEffect(() => {
     const dataFetch = async () => {
-      const monitors = await props.datasource.getResource('Monitors');
-      setMonitors(monitors);
+      try {
+        const monitors = await props.datasource.getResource('Monitors');
+        setMonitors(monitors);
+      } catch (e) {
+        console.error(e)
+        setMonitors([]);
+      }
     };
 
     dataFetch();
