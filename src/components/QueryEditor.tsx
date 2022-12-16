@@ -20,7 +20,6 @@ export const QueryEditor = (props: Props) => {
     dataFetch();
   }, [props.datasource]);
 
-
   const queryTypeChange = (val: SelectableValue<string>) => {
     const { onChange, query, onRunQuery } = props;
     onChange({ ...query, queryType: val.value as string });
