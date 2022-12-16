@@ -11,41 +11,6 @@ import (
 	"github.com/metrist/metrist/pkg/internal"
 )
 
-type stubClient struct {
-	internal.ClientWithResponsesInterface
-	telemetryResponse  internal.BackendWebMonitorTelemetryControllerGetResponse
-	statusPageResponse internal.BackendWebStatusPageChangeControllerGetResponse
-	errorResponse      internal.BackendWebMonitorErrorControllerGetResponse
-}
-
-func (m *stubClient) BackendWebMonitorTelemetryControllerGetWithResponse(ctx context.Context,
-	params *internal.BackendWebMonitorTelemetryControllerGetParams,
-	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebMonitorTelemetryControllerGetResponse, error) {
-	return &m.telemetryResponse, nil
-}
-
-func (m *stubClient) BackendWebStatusPageChangeControllerGetWithResponse(ctx context.Context,
-	params *internal.BackendWebStatusPageChangeControllerGetParams,
-	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebStatusPageChangeControllerGetResponse, error) {
-	return &m.statusPageResponse, nil
-}
-
-func (m *stubClient) BackendWebMonitorErrorControllerGetWithResponse(ctx context.Context,
-	params *internal.BackendWebMonitorErrorControllerGetParams,
-	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebMonitorErrorControllerGetResponse, error) {
-	return &m.errorResponse, nil
-}
-
-var (
-	testPluginContext = backend.PluginContext{
-		DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{
-			DecryptedSecureJSONData: map[string]string{
-				"apiKey": "test",
-			},
-		},
-	}
-)
-
 func TestQueryMonitorTelemetry(t *testing.T) {
 	var value float32 = 100
 	timeRange := backend.TimeRange{

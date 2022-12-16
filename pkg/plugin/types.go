@@ -11,3 +11,10 @@ type monitorTelemetryQuery struct {
 	Monitors      []string `json:"monitors"`
 	IncludeShared bool     `json:"includeshared"`
 }
+
+type selectOption struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+type selectOptions []selectOption

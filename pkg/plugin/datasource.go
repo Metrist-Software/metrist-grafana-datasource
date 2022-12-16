@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
@@ -14,21 +15,22 @@ import (
 	"github.com/metrist/metrist/pkg/internal"
 )
 
-// Make sure Datasource implements required interfaces. This is important to do
-// since otherwise we will only get a not implemented error response from plugin in
-// runtime. In this example datasource instance implements backend.QueryDataHandler,
-// backend.CheckHealthHandler interfaces. Plugin should not implement all these
-// interfaces- only those which are required for a particular task.
 var (
 	_ backend.QueryDataHandler      = (*Datasource)(nil)
 	_ backend.CheckHealthHandler    = (*Datasource)(nil)
+	_ backend.CallResourceHandler   = (*Datasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
 var (
-	errRemoteRequest  = errors.New("remote request error")
-	errRemoteResponse = errors.New("remote response error")
-	errMissingApiKey  = errors.New("missing api key")
+	errRemoteRequest          = errors.New("remote request error")
+	errRemoteResponse         = errors.New("remote response error")
+	errMissingApiKey          = errors.New("missing api key")
+	errTimerangeLimitExceeded = errors.New("time range cannot exceed 3 months long")
+)
+
+const (
+	durationThreeMonths = 3 * 30 * 24 * time.Hour
 )
 
 // NewDatasource creates a new datasource instance.
@@ -65,12 +67,16 @@ func (d *Datasource) Dispose() {
 // QueryData go through each query and routes them to the appropriate query handler
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 	log.DefaultLogger.Debug("QueryData called", "numQueries", len(req.Queries))
-
 	response := backend.NewQueryDataResponse()
 
 	for _, q := range req.Queries {
-		res, err := d.query(ctx, req.PluginContext, q)
+		if err := ensureTimeRangeWithinLimits(q.TimeRange.Duration()); err != nil {
+			log.DefaultLogger.Error("time range error: %w", err)
+			response.Responses[q.RefID] = backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+			continue
+		}
 
+		res, err := d.query(ctx, req.PluginContext, q)
 		if err != nil {
 			log.DefaultLogger.Error("error %v", err)
 		}
@@ -100,9 +106,9 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
 
-	apiKey, ok := pCtx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
-	if !ok {
-		return backend.DataResponse{}, errMissingApiKey
+	apiKey, err := requireApiKey(pCtx)
+	if err != nil {
+		return backend.DataResponse{}, err
 	}
 
 	switch qm.QueryType {
@@ -121,14 +127,81 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 // The main use case for these health checks is the test button on the
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
-func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	log.DefaultLogger.Debug("CheckHealth called")
+func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+	apiKey, err := requireApiKey(req.PluginContext)
+	if err != nil {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: err.Error(),
+		}, nil
+	}
 
-	var status = backend.HealthStatusOk
-	var message = "Data source is working"
+	resp, err := d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
+	if err != nil {
+		log.DefaultLogger.Debug("verify auth controller error: %w", err)
+		return nil, err
+	}
 
-	return &backend.CheckHealthResult{
-		Status:  status,
-		Message: message,
-	}, nil
+	switch resp.StatusCode() {
+	case http.StatusOK:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusOk,
+			Message: "Data source is working!",
+		}, nil
+	case http.StatusUnauthorized:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: "Unauthorized: Invalid API Key",
+		}, nil
+	default:
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: resp.Status(),
+		}, nil
+	}
+}
+
+// CallResource implements backend.CallResourceHandler
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	apiKey, err := requireApiKey(req.PluginContext)
+	if err != nil {
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusUnauthorized,
+			Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, err.Error())),
+		})
+	}
+
+	switch req.Path {
+	case "Monitors":
+		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
+		if err != nil {
+			log.DefaultLogger.Error("resource monitor list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	default:
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusNotFound,
+		})
+	}
+}
+
+func requireApiKey(ctx backend.PluginContext) (string, error) {
+	apiKey, ok := ctx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
+	log.DefaultLogger.Debug("api key %v", apiKey)
+	if !ok || apiKey == "" {
+		return "", errMissingApiKey
+	}
+	return apiKey, nil
+}
+
+func ensureTimeRangeWithinLimits(duration time.Duration) error {
+	if duration > durationThreeMonths {
+		return errTimerangeLimitExceeded
+	}
+
+	return nil
 }
