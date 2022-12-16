@@ -71,7 +71,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 	}
 
 	switch req.Path {
-	case "monitors":
+	case "Monitors":
 		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
 		if err != nil {
 			log.DefaultLogger.Error("resource monitor list error: %w", err)

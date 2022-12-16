@@ -13,7 +13,7 @@ export const QueryEditor = (props: Props) => {
 
   useEffect(() => {
     const dataFetch = async () => {
-      const monitors = await props.datasource.getResource('monitors');
+      const monitors = await props.datasource.getResource('Monitors');
       setMonitors(monitors);
     };
 
@@ -59,7 +59,6 @@ export const QueryEditor = (props: Props) => {
         return <></>
     }
   }
-
 
   const query = defaults(props.query, defaultQuery);
   const { monitors, queryType } = query;
