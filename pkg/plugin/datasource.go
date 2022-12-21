@@ -26,7 +26,7 @@ var (
 	errRemoteRequest          = errors.New("remote request error")
 	errRemoteResponse         = errors.New("remote response error")
 	errMissingApiKey          = errors.New("missing api key")
-	errTimerangeLimitExceeded = errors.New("time range cannot exceed 3 months long")
+	errTimerangeLimitExceeded = errors.New("time range cannot exceed 90 days")
 )
 
 const (
@@ -39,18 +39,22 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
+
 	cl, err := httpclient.New(opts)
 	if err != nil {
 		return nil, fmt.Errorf("httpclient new: %w", err)
 	}
+
 	apiKey, ok := settings.DecryptedSecureJSONData["apiKey"]
 	if !ok || apiKey == "" {
 		return nil, errMissingApiKey
 	}
+
 	openApiClient, err := internal.NewClientWithResponses(internal.Endpoint(), internal.WithHTTPClient(cl), internal.WithRequestEditorFn(withAPIKey(apiKey)))
 	if err != nil {
 		return nil, fmt.Errorf("internal new client: %w", err)
 	}
+
 	return &Datasource{
 		settings:      settings,
 		httpClient:    cl,

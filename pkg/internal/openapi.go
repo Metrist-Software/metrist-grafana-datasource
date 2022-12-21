@@ -73,8 +73,8 @@ type MonitorError struct {
 	// Check Check that generated the error
 	Check *string `json:"check,omitempty"`
 
-	// ErrorString Error string value
-	ErrorString *string `json:"error_string,omitempty"`
+	// Count Error count
+	Count *int `json:"count,omitempty"`
 
 	// Instance Instance that generated the error
 	Instance *string `json:"instance,omitempty"`
@@ -88,6 +88,15 @@ type MonitorError struct {
 
 // MonitorErrors A collection of Monitor Errors
 type MonitorErrors = []MonitorError
+
+// MonitorErrorsPage A page of monitor errors
+type MonitorErrorsPage struct {
+	// Entries A collection of Monitor Errors
+	Entries *MonitorErrors `json:"entries,omitempty"`
+
+	// Metadata Defines page metadata
+	Metadata *PageMetadata `json:"metadata,omitempty"`
+}
 
 // MonitorList A list of monitors
 type MonitorList = []MonitorListEntry
@@ -119,8 +128,26 @@ type MonitorStatuses = []MonitorStatus
 // MonitorTelemetry A collection of Telemetry Entries
 type MonitorTelemetry = []TelemetryEntry
 
+// PageMetadata Defines page metadata
+type PageMetadata struct {
+	// CursorAfter an opaque cursor representing the last row of the current page
+	CursorAfter *string `json:"cursor_after,omitempty"`
+
+	// CursorBefore an opaque cursor representing the first row of the current page
+	CursorBefore *string `json:"cursor_before,omitempty"`
+}
+
 // StatusPageChanges A collection of Status Page Component Changes
 type StatusPageChanges = []StatusPageComponentChange
+
+// StatusPageChangesPage A page of status page changes
+type StatusPageChangesPage struct {
+	// Entries A collection of Status Page Component Changes
+	Entries *StatusPageChanges `json:"entries,omitempty"`
+
+	// Metadata Defines page metadata
+	Metadata *PageMetadata `json:"metadata,omitempty"`
+}
 
 // StatusPageComponentChange A single change for a single status page component
 type StatusPageComponentChange struct {
@@ -151,7 +178,7 @@ type TelemetryEntry struct {
 	// Timestamp Time when the error was generated
 	Timestamp *string `json:"timestamp,omitempty"`
 
-	// Value The time this check took to execute in milliseconds
+	// Value The average time this check took to execute in milliseconds
 	Value *float32 `json:"value,omitempty"`
 }
 
@@ -162,6 +189,15 @@ type BackendWebMonitorErrorControllerGetParams struct {
 
 	// To End of datetime range in ISO_8601 format
 	To *string `form:"to,omitempty" json:"to,omitempty"`
+
+	// CursorAfter Fetch the records after this cursor.
+	CursorAfter *string `form:"cursor_after,omitempty" json:"cursor_after,omitempty"`
+
+	// CursorBefore Fetch the records before this cursor.
+	CursorBefore *string `form:"cursor_before,omitempty" json:"cursor_before,omitempty"`
+
+	// Limit Limit of the result set
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
 	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
@@ -187,6 +223,15 @@ type BackendWebStatusPageChangeControllerGetParams struct {
 
 	// To End of datetime range in ISO_8601 format
 	To *string `form:"to,omitempty" json:"to,omitempty"`
+
+	// CursorAfter Fetch the records after this cursor.
+	CursorAfter *string `form:"cursor_after,omitempty" json:"cursor_after,omitempty"`
+
+	// CursorBefore Fetch the records before this cursor.
+	CursorBefore *string `form:"cursor_before,omitempty" json:"cursor_before,omitempty"`
+
+	// Limit Limit of the result set
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
@@ -552,6 +597,54 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 
 	}
 
+	if params.CursorAfter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor_after", runtime.ParamLocationQuery, *params.CursorAfter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.CursorBefore != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor_before", runtime.ParamLocationQuery, *params.CursorBefore); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Limit != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
 	if params.IncludeShared != nil {
 
 		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_shared", runtime.ParamLocationQuery, *params.IncludeShared); err != nil {
@@ -700,6 +793,54 @@ func NewBackendWebStatusPageChangeControllerGetRequest(server string, params *Ba
 	if params.To != nil {
 
 		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.CursorAfter != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor_after", runtime.ParamLocationQuery, *params.CursorAfter); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.CursorBefore != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "cursor_before", runtime.ParamLocationQuery, *params.CursorBefore); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.Limit != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit", runtime.ParamLocationQuery, *params.Limit); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -972,7 +1113,7 @@ func (r BackendWebMonitorConfigControllerDeleteResponse) StatusCode() int {
 type BackendWebMonitorErrorControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorErrors
+	JSON200      *MonitorErrorsPage
 }
 
 // Status returns HTTPResponse.Status
@@ -1038,7 +1179,7 @@ func (r BackendWebMonitorStatusControllerGetResponse) StatusCode() int {
 type BackendWebStatusPageChangeControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *StatusPageChanges
+	JSON200      *StatusPageChangesPage
 }
 
 // Status returns HTTPResponse.Status
@@ -1227,7 +1368,7 @@ func ParseBackendWebMonitorErrorControllerGetResponse(rsp *http.Response) (*Back
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorErrors
+		var dest MonitorErrorsPage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1305,7 +1446,7 @@ func ParseBackendWebStatusPageChangeControllerGetResponse(rsp *http.Response) (*
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest StatusPageChanges
+		var dest StatusPageChangesPage
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
