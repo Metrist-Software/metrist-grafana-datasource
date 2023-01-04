@@ -43,7 +43,11 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 	if err != nil {
 		return nil, fmt.Errorf("httpclient new: %w", err)
 	}
-	openApiClient, err := internal.NewClientWithResponses(internal.Endpoint(), internal.WithHTTPClient(cl))
+	apiKey, ok := settings.DecryptedSecureJSONData["apiKey"]
+	if !ok || apiKey == "" {
+		return nil, errMissingApiKey
+	}
+	openApiClient, err := internal.NewClientWithResponses(internal.Endpoint(), internal.WithHTTPClient(cl), internal.WithRequestEditorFn(withAPIKey(apiKey)))
 	if err != nil {
 		return nil, fmt.Errorf("internal new client: %w", err)
 	}
@@ -106,18 +110,13 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
 
-	apiKey, err := requireApiKey(pCtx)
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-
 	switch qm.QueryType {
 	case "GetMonitorErrors":
-		return QueryMonitorErrors(ctx, query, d.openApiClient, apiKey)
+		return QueryMonitorErrors(ctx, query, d.openApiClient)
 	case "GetMonitorTelemetry":
-		return QueryMonitorTelemetry(ctx, query, d.openApiClient, apiKey)
+		return QueryMonitorTelemetry(ctx, query, d.openApiClient)
 	case "GetMonitorStatusPageChanges":
-		return QueryMonitorStatusPageChanges(ctx, query, d.openApiClient, apiKey)
+		return QueryMonitorStatusPageChanges(ctx, query, d.openApiClient)
 	default:
 		return backend.DataResponse{}, nil
 	}
@@ -128,15 +127,7 @@ func (d *Datasource) query(ctx context.Context, pCtx backend.PluginContext, quer
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
 func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	apiKey, err := requireApiKey(req.PluginContext)
-	if err != nil {
-		return &backend.CheckHealthResult{
-			Status:  backend.HealthStatusError,
-			Message: err.Error(),
-		}, nil
-	}
-
-	resp, err := d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx, withAPIKey(apiKey))
+	resp, err := d.openApiClient.BackendWebVerifyAuthControllerGetWithResponse(ctx)
 	if err != nil {
 		log.DefaultLogger.Debug("verify auth controller error: %w", err)
 		return nil, err
@@ -163,17 +154,9 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 
 // CallResource implements backend.CallResourceHandler
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
-	apiKey, err := requireApiKey(req.PluginContext)
-	if err != nil {
-		return sender.Send(&backend.CallResourceResponse{
-			Status: http.StatusUnauthorized,
-			Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, err.Error())),
-		})
-	}
-
 	switch req.Path {
 	case "Monitors":
-		response, err := ResourceMonitorList(ctx, d.openApiClient, apiKey)
+		response, err := ResourceMonitorList(ctx, d.openApiClient)
 		if err != nil {
 			log.DefaultLogger.Error("resource monitor list error: %w", err)
 			return sender.Send(&backend.CallResourceResponse{
@@ -187,15 +170,6 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			Status: http.StatusNotFound,
 		})
 	}
-}
-
-func requireApiKey(ctx backend.PluginContext) (string, error) {
-	apiKey, ok := ctx.DataSourceInstanceSettings.DecryptedSecureJSONData["apiKey"]
-	log.DefaultLogger.Debug("api key %v", apiKey)
-	if !ok || apiKey == "" {
-		return "", errMissingApiKey
-	}
-	return apiKey, nil
 }
 
 func ensureTimeRangeWithinLimits(duration time.Duration) error {

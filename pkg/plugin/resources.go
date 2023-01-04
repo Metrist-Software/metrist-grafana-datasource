@@ -10,8 +10,8 @@ import (
 )
 
 // ResourceMonitorList returns a list of monitors which is can be used by a select box
-func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponsesInterface, apiKey string) (backend.CallResourceResponse, error) {
-	resp, err := client.BackendWebMonitorListControllerGetWithResponse(ctx, withAPIKey(apiKey))
+func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponsesInterface) (backend.CallResourceResponse, error) {
+	resp, err := client.BackendWebMonitorListControllerGetWithResponse(ctx)
 	if err != nil {
 		return backend.CallResourceResponse{}, err
 	}
