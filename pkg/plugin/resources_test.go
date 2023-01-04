@@ -13,7 +13,6 @@ import (
 func TestResourceMonitorList(t *testing.T) {
 	type args struct {
 		client internal.ClientWithResponsesInterface
-		apiKey string
 	}
 	tests := []struct {
 		name    string
@@ -24,7 +23,6 @@ func TestResourceMonitorList(t *testing.T) {
 		{
 			name: "serializes list of monitors properly properly",
 			args: args{
-				apiKey: "OK",
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
 					JSON200: &internal.MonitorList{{LogicalName: ptr("AWS Lambda"), Name: ptr("awslambda")}},
 				}},
@@ -38,7 +36,6 @@ func TestResourceMonitorList(t *testing.T) {
 		{
 			name: "handles empty monitor list",
 			args: args{
-				apiKey: "OK",
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
 					JSON200: &internal.MonitorList{},
 				}},
@@ -52,7 +49,7 @@ func TestResourceMonitorList(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResourceMonitorList(context.Background(), tt.args.client, tt.args.apiKey)
+			got, err := ResourceMonitorList(context.Background(), tt.args.client)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResourceMonitorList() error = %v, wantErr %v", err, tt.wantErr)
 				return

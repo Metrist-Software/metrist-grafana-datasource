@@ -20,7 +20,7 @@ const (
 )
 
 // QueryMonitorErrors queries `/monitor-telemetry`
-func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
+func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
@@ -33,8 +33,7 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 			To:            &to,
 			M:             &monitorTelemetryQuery.Monitors,
 			IncludeShared: &monitorTelemetryQuery.IncludeShared,
-		},
-		withAPIKey(apiKey))
+		})
 
 	if err != nil {
 		return backend.DataResponse{}, err
@@ -75,7 +74,7 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 }
 
 // QueryMonitorTelemetry queries `/monitor-telemetry`
-func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
+func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
 
@@ -89,8 +88,7 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 			To:            &to,
 			M:             &monitorTelemetryQuery.Monitors,
 			IncludeShared: &monitorTelemetryQuery.IncludeShared,
-		},
-		withAPIKey(apiKey))
+		})
 
 	if err != nil {
 		return backend.DataResponse{}, err
@@ -130,7 +128,7 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 }
 
 // QueryMonitorStatusPageChanges queries `/status-page-changes`
-func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface, apiKey string) (backend.DataResponse, error) {
+func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
 	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
 
@@ -143,7 +141,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 			From: from,
 			To:   &to,
 			M:    &monitorTelemetryQuery.Monitors,
-		}, withAPIKey(apiKey))
+		})
 
 	if err != nil {
 		return backend.DataResponse{}, err
