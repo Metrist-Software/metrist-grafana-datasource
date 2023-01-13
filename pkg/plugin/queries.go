@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/metrist/metrist/pkg/internal"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -68,30 +70,50 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 }
 
 func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.MonitorErrors, error) {
-	monitorErrors := make(internal.MonitorErrors, 0)
-	var cursorAfter *string = nil
+	onlyShared := true
 	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
-	for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-		resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx,
-			&internal.BackendWebMonitorErrorControllerGetParams{
-				CursorAfter:   cursorAfter,
-				From:          from,
-				To:            &to,
-				M:             &query.Monitors,
-				IncludeShared: &query.IncludeShared,
-			})
 
-		if err != nil {
-			return nil, err
-		}
+	params := []internal.BackendWebMonitorErrorControllerGetParams{{
+		From: from,
+		To:   &to,
+		M:    &query.Monitors,
+	}}
 
-		response := resp.JSON200
-		monitorErrors = append(monitorErrors, *response.Entries...)
-
-		if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
-			break
-		}
+	if query.IncludeShared {
+		params = append(params, internal.BackendWebMonitorErrorControllerGetParams{
+			From:       from,
+			To:         &to,
+			M:          &query.Monitors,
+			OnlyShared: &onlyShared,
+		})
 	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	monitorErrors := make(internal.MonitorErrors, 0)
+	for _, param := range params {
+		param := param // https://golang.org/doc/faq#closures_and_goroutines
+		g.Go(func() error {
+			var cursorAfter *string
+			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
+				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &param)
+				if err != nil {
+					return err
+				}
+				response := resp.JSON200
+				monitorErrors = append(monitorErrors, *response.Entries...)
+				if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
+					break
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	sort.SliceStable(monitorErrors, func(i, j int) bool {
+		return strToTime(*monitorErrors[i].Timestamp).Before(strToTime(*monitorErrors[j].Timestamp))
+	})
 	return monitorErrors, nil
 }
 

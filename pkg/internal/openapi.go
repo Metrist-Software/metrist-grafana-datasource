@@ -199,8 +199,8 @@ type BackendWebMonitorErrorControllerGetParams struct {
 	// Limit Limit of the result set
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
-	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
-	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
+	// OnlyShared Whether to only return SHARED data in returned results. If omitted, the account specific data is returned
+	OnlyShared *bool `form:"only_shared,omitempty" json:"only_shared,omitempty"`
 
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
@@ -645,9 +645,9 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 
 	}
 
-	if params.IncludeShared != nil {
+	if params.OnlyShared != nil {
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_shared", runtime.ParamLocationQuery, *params.IncludeShared); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "only_shared", runtime.ParamLocationQuery, *params.OnlyShared); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
