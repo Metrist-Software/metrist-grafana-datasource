@@ -87,21 +87,20 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorStatusPageChanges"}`)
 	tests := []struct {
-		client stubClient
-		name   string
-		want   data.Frames
+		page *internal.StatusPageChangesPage
+		name string
+		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			client: stubClient{
-				statusPageResponse: internal.BackendWebStatusPageChangeControllerGetResponse{
-					JSON200: &internal.StatusPageChanges{{
-						Component:          ptr("component1"),
-						MonitorLogicalName: ptr("monitor"),
-						Status:             ptr("up"),
-						Timestamp:          ptr("2022-12-07T18:28:06.485416Z"),
-					}},
-				},
+			page: &internal.StatusPageChangesPage{
+				Metadata: &internal.PageMetadata{},
+				Entries: &internal.StatusPageChanges{{
+					Component:          ptr("component1"),
+					MonitorLogicalName: ptr("monitor"),
+					Status:             ptr("up"),
+					Timestamp:          ptr("2022-12-07T18:28:06.485416Z"),
+				}},
 			},
 			want: data.Frames{{
 				Name: DataFrameMonitorStatusPageChanges,
@@ -114,10 +113,9 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 		},
 		{
 			name: "Returns an empty frame if no response",
-			client: stubClient{
-				statusPageResponse: internal.BackendWebStatusPageChangeControllerGetResponse{
-					JSON200: &internal.StatusPageChanges{},
-				},
+			page: &internal.StatusPageChangesPage{
+				Metadata: &internal.PageMetadata{},
+				Entries:  &internal.StatusPageChanges{},
 			},
 			want: data.Frames{},
 		},
@@ -125,7 +123,11 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ds := Datasource{openApiClient: &test.client}
+			ds := Datasource{openApiClient: &stubClient{
+				statusPageResponse: internal.BackendWebStatusPageChangeControllerGetResponse{
+					JSON200: test.page,
+				},
+			}}
 			resp, err := ds.QueryData(
 				context.Background(),
 				&backend.QueryDataRequest{
@@ -160,46 +162,45 @@ func TestQueryMonitorErrors(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorErrors"}`)
 	tests := []struct {
-		client stubClient
-		name   string
-		want   data.Frames
+		page *internal.MonitorErrorsPage
+		name string
+		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			client: stubClient{
-				errorResponse: internal.BackendWebMonitorErrorControllerGetResponse{
-					JSON200: &internal.MonitorErrors{{
-						Check:              ptr("check"),
-						ErrorString:        ptr("error"),
-						Instance:           ptr("us-east-1"),
-						MonitorLogicalName: ptr("monitor"),
-						Timestamp:          ptr("2022-12-07T18:28:06.485416Z"),
-					}},
-				},
+			page: &internal.MonitorErrorsPage{
+				Entries: &internal.MonitorErrorCounts{{
+					Check:              ptr("check"),
+					Count:              ptr(1),
+					Instance:           ptr("us-east-1"),
+					MonitorLogicalName: ptr("monitor"),
+					Timestamp:          ptr("2022-12-07T18:28:06.485416Z"),
+				}},
+				Metadata: &internal.PageMetadata{},
 			},
 			want: data.Frames{{
 				Name: DataFrameMonitorErrors,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int8{1}),
+					data.NewField("", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int64{1}),
 				},
 				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
 			}},
 		},
 		{
 			name: "Returns an empty frame if no response",
-			client: stubClient{
-				errorResponse: internal.BackendWebMonitorErrorControllerGetResponse{
-					JSON200: &internal.MonitorErrors{},
-				},
-			},
+			page: &internal.MonitorErrorsPage{
+				Entries:  &internal.MonitorErrorCounts{},
+				Metadata: &internal.PageMetadata{}},
 			want: data.Frames{},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ds := Datasource{openApiClient: &test.client}
+			ds := Datasource{openApiClient: &stubClient{errorResponse: internal.BackendWebMonitorErrorControllerGetResponse{
+				JSON200: test.page,
+			}}}
 			resp, err := ds.QueryData(
 				context.Background(),
 				&backend.QueryDataRequest{
@@ -219,11 +220,6 @@ func TestQueryMonitorErrors(t *testing.T) {
 		})
 
 	}
-}
-
-func strToTime(str string) time.Time {
-	time, _ := time.Parse(time.RFC3339, str)
-	return time
 }
 
 func ptr[T any](v T) *T {
