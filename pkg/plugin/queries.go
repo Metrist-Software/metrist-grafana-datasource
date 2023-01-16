@@ -69,7 +69,7 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
 }
 
-func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.MonitorErrors, error) {
+func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.MonitorErrorCounts, error) {
 	onlyShared := true
 	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
 
@@ -89,7 +89,7 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	monitorErrors := make(internal.MonitorErrors, 0)
+	monitorErrors := make(internal.MonitorErrorCounts, 0)
 	for _, param := range params {
 		param := param // https://golang.org/doc/faq#closures_and_goroutines
 		g.Go(func() error {

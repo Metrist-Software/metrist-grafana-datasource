@@ -169,7 +169,7 @@ func TestQueryMonitorErrors(t *testing.T) {
 		{
 			name: "Returns a dataframe if client returns telemetry",
 			page: &internal.MonitorErrorsPage{
-				Entries: &internal.MonitorErrors{{
+				Entries: &internal.MonitorErrorCounts{{
 					Check:              ptr("check"),
 					Count:              ptr(1),
 					Instance:           ptr("us-east-1"),
@@ -190,7 +190,7 @@ func TestQueryMonitorErrors(t *testing.T) {
 		{
 			name: "Returns an empty frame if no response",
 			page: &internal.MonitorErrorsPage{
-				Entries:  &internal.MonitorErrors{},
+				Entries:  &internal.MonitorErrorCounts{},
 				Metadata: &internal.PageMetadata{}},
 			want: data.Frames{},
 		},

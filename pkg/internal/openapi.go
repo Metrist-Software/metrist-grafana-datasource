@@ -68,8 +68,8 @@ type MonitorConfigStep struct {
 // MonitorConfigSteps A collection of Monitor Config Steps
 type MonitorConfigSteps = []MonitorConfigStep
 
-// MonitorError An error generated from a monitor
-type MonitorError struct {
+// MonitorErrorCount A count of monitor errors per Monitor, Instance and Check
+type MonitorErrorCount struct {
 	// Check Check that generated the error
 	Check *string `json:"check,omitempty"`
 
@@ -86,13 +86,13 @@ type MonitorError struct {
 	Timestamp *string `json:"timestamp,omitempty"`
 }
 
-// MonitorErrors A collection of Monitor Errors
-type MonitorErrors = []MonitorError
+// MonitorErrorCounts A collection of Monitor Errors
+type MonitorErrorCounts = []MonitorErrorCount
 
 // MonitorErrorsPage A page of monitor errors
 type MonitorErrorsPage struct {
 	// Entries A collection of Monitor Errors
-	Entries *MonitorErrors `json:"entries,omitempty"`
+	Entries *MonitorErrorCounts `json:"entries,omitempty"`
 
 	// Metadata Defines page metadata
 	Metadata *PageMetadata `json:"metadata,omitempty"`
@@ -126,7 +126,7 @@ type MonitorStatus struct {
 type MonitorStatuses = []MonitorStatus
 
 // MonitorTelemetry A collection of Telemetry Entries
-type MonitorTelemetry = []TelemetryEntry
+type MonitorTelemetry = []TelemetryEntryAverage
 
 // PageMetadata Defines page metadata
 type PageMetadata struct {
@@ -164,8 +164,8 @@ type StatusPageComponentChange struct {
 	Timestamp *string `json:"timestamp,omitempty"`
 }
 
-// TelemetryEntry A single piece of telemetry for a monitor
-type TelemetryEntry struct {
+// TelemetryEntryAverage An average of telemetry values within a certain period
+type TelemetryEntryAverage struct {
 	// Check Check that generated the error
 	Check *string `json:"check,omitempty"`
 
