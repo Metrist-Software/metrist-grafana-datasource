@@ -75,7 +75,7 @@ export const QueryEditor = (props: Props) => {
     return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
   }
 
-  if (buildHash == "") {
+  if (buildHash === "") {
     return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
   }
 
