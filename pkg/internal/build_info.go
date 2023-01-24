@@ -1,6 +1,6 @@
 package internal
 
-var Environment = "dev"
+var Environment string
 
 const (
 	ProdEndpoint = "https://app.metrist.io/api/v0"
@@ -9,9 +9,9 @@ const (
 
 func Endpoint() string {
 	switch Environment {
-	case "dev":
-		return Dev1Endpoint
-	default:
+	case "prod":
 		return ProdEndpoint
+	default:
+		return Dev1Endpoint
 	}
 }
