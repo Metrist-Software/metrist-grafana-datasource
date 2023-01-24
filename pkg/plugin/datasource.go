@@ -169,6 +169,11 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			})
 		}
 		return sender.Send(&response)
+	case "BuildHash":
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusOK,
+			Body:   []byte(fmt.Sprintf(`{"hash": "%s"}`, internal.BuildHash)),
+		})
 	default:
 		return sender.Send(&backend.CallResourceResponse{
 			Status: http.StatusNotFound,

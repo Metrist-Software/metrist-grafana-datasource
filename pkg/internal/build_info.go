@@ -1,7 +1,7 @@
 package internal
 
 var Environment = "dev"
-var Hash string
+var BuildHash string
 
 const (
 	ProdEndpoint = "https://app.metrist.io/api/v0"
