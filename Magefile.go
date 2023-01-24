@@ -30,7 +30,7 @@ func Deploy() {
 	buildFunc()
 
 	hash := getHash()
-	distFileName := fmt.Sprintf("metrist-grafana-plugin-%s%s.zip", hash, qualifier)
+	distFileName := fmt.Sprintf("grafana-plugin-%s%s.zip", hash, qualifier)
 	localFile := "/tmp/" + distFileName
 	os.Remove(localFile)
 	os.Chdir("dist")
@@ -40,6 +40,8 @@ func Deploy() {
 
 // Default configures the default target - will build dev by default.
 var Default = Build
+
+//Helper functions
 
 func getHash() string {
 	if hash, err := sh.Output("git", "rev-parse", "--short", "HEAD"); err != nil {
