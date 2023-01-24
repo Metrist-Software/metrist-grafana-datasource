@@ -1,6 +1,7 @@
 package internal
 
-var Environment string
+var Environment = "dev"
+var Hash string
 
 const (
 	ProdEndpoint = "https://app.metrist.io/api/v0"
