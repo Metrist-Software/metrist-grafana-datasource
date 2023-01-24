@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/metrist/metrist/pkg/internal"
 )
 
 // ResourceMonitorList returns a list of monitors which is can be used by a select box

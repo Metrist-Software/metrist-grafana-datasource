@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
+	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/plugin"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/metrist/metrist/pkg/plugin"
 )
 
 func main() {

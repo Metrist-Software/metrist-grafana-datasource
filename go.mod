@@ -1,4 +1,4 @@
-module github.com/metrist/metrist
+module github.com/Metrist-Software/metrist-grafana-datasource
 
 go 1.19
 

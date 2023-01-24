@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/metrist/metrist/pkg/internal"
 )
 
 var (
