@@ -8,7 +8,6 @@ import (
 	build "github.com/grafana/grafana-plugin-sdk-go/build"
 
 	"fmt"
-	"os"
 
 	"github.com/magefile/mage/sh"
 )
@@ -21,21 +20,6 @@ func BuildProd() {
 // Generate a normal development build
 func Build() {
 	buildForEnv("dev")
-}
-
-// Perform a production build and then upload to S3 distribution bucket
-func Deploy() {
-	qualifier, buildFunc := getQualifierAndBuildFunc()
-
-	buildFunc()
-
-	hash := getHash()
-	distFileName := fmt.Sprintf("grafana-plugin-%s%s.zip", hash, qualifier)
-	localFile := "/tmp/" + distFileName
-	os.Remove(localFile)
-	os.Chdir("dist")
-	sh.Run("zip", "-r", localFile, ".")
-	sh.Run("aws", "s3", "cp", "--region=us-west-2", localFile, "s3://dist.metrist.io/grafana-plugin/"+distFileName)
 }
 
 // Default configures the default target - will build dev by default.
@@ -64,13 +48,4 @@ func buildForEnv(env string) {
 	})
 
 	build.BuildAll()
-}
-
-func getQualifierAndBuildFunc() (string, func()) {
-	environment, _ := os.LookupEnv("GITHUB_REF")
-	if environment == "refs/heads/main" {
-		return "", BuildProd
-	} else {
-		return "-preview", Build
-	}
 }
