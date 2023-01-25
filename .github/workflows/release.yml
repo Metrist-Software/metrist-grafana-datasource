@@ -52,7 +52,7 @@ jobs:
         uses: magefile/mage-action@v1
         with:
           version: latest
-          args: buildAll
+          args: build
 
       - name: Sign plugin
         run: npx @grafana/sign-plugin

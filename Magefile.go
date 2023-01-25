@@ -8,25 +8,31 @@ import (
 	build "github.com/grafana/grafana-plugin-sdk-go/build"
 
 	"fmt"
+	"os"
 
 	"github.com/magefile/mage/sh"
 )
 
-// Generate a production build
+// Generate a production build (pointing to the production API)
 func BuildProd() {
 	buildForEnv("prod")
 }
 
-// Generate a normal development build
-func Build() {
+// Generate a dev build (pointing to the dev API)
+func BuildDev() {
 	buildForEnv("dev")
 }
 
-// Default configures the default target - will build dev by default.
+// Generate a dev or production built dependent on the GITHUB_REF env var (defaults to dev)
+func Build() {
+	buildFunction := getBuildFunc()
+	buildFunction()
+}
+
+// Default configures the default target.
 var Default = Build
 
-//Helper functions
-
+// Helper functions
 func getHash() string {
 	if hash, err := sh.Output("git", "rev-parse", "--short", "HEAD"); err != nil {
 		fmt.Println(err)
@@ -48,4 +54,13 @@ func buildForEnv(env string) {
 	})
 
 	build.BuildAll()
+}
+
+func getBuildFunc() func() {
+	environment, _ := os.LookupEnv("GITHUB_REF")
+	if environment == "refs/heads/main" {
+		return BuildProd
+	} else {
+		return BuildDev
+	}
 }
