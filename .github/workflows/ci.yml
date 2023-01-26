@@ -1,7 +1,7 @@
 name: CI
 
 # we want to run the tests and builds on all pushes
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build:
