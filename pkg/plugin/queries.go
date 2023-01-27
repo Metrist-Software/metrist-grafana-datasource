@@ -52,6 +52,7 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		},
 	}
 
+	log.DefaultLogger.Debug("errors, %v", responses)
 	for _, monitorError := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
 		if err != nil {
@@ -89,9 +90,12 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	monitorErrors := make(internal.MonitorErrorCounts, 0)
-	for _, param := range params {
+	result := make([]internal.MonitorErrorCounts, maxPageCount)
+	// Runs 2 go routines if shared is included
+	// Each goroutine will page through the result
+	for i, param := range params {
 		param := param // https://golang.org/doc/faq#closures_and_goroutines
+		i := i
 		g.Go(func() error {
 			var cursorAfter *string
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
@@ -100,7 +104,7 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 					return err
 				}
 				response := resp.JSON200
-				monitorErrors = append(monitorErrors, *response.Entries...)
+				result[i] = *response.Entries
 				if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
 					break
 				}
@@ -108,8 +112,17 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 			return nil
 		})
 	}
+
 	if err := g.Wait(); err != nil {
 		return nil, err
+	}
+
+	monitorErrors := make(internal.MonitorErrorCounts, 0)
+	for _, v := range result {
+		if v == nil {
+			continue
+		}
+		monitorErrors = append(monitorErrors, v...)
 	}
 	sort.SliceStable(monitorErrors, func(i, j int) bool {
 		return strToTime(*monitorErrors[i].Timestamp).Before(strToTime(*monitorErrors[j].Timestamp))
