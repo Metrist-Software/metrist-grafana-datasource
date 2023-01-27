@@ -9,10 +9,12 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
+    # Changing permissions here to allow id-token for AWS secrets restricts GITHUB_TOKEN permissions from its defaults (which are quite permissive)
+    # Defaults can be found here: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+    # So all permissions needed for all steps in all jobs have to be included packages/contents write for the release creation
     permissions:
       id-token: write
       contents: write
-      pull-requests: write
       packages: write      
 
     steps:
