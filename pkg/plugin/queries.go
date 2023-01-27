@@ -98,12 +98,18 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 		g.Go(func() error {
 			var cursorAfter *string
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &param)
+				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &internal.BackendWebMonitorErrorControllerGetParams{
+					From:        param.From,
+					To:          param.To,
+					M:           param.M,
+					CursorAfter: cursorAfter,
+					OnlyShared:  param.OnlyShared,
+				})
 				if err != nil {
 					return err
 				}
 				response := resp.JSON200
-				result[i] = *response.Entries
+				result[i] = append(result[i], *response.Entries...)
 				if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
 					break
 				}
