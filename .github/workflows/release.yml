@@ -9,8 +9,28 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
+    # Changing permissions here to allow id-token for AWS secrets restricts GITHUB_TOKEN permissions from its defaults (which are quite permissive)
+    # Defaults can be found here: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+    # So all permissions needed for all steps in the job have to be included packages/contents write for the release creation
+    permissions:
+      id-token: write
+      contents: write
+      packages: write      
+
     steps:
       - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::147803588724:role/github-action
+          aws-region: us-west-2
+
+      - name: Import Grafana PluginPublish API KEY
+        run: |
+          publish_api_key=$(aws secretsmanager get-secret-value --secret-id /prod/gh-actions/grafana-plugin-publish-key --region us-west-2 | jq -r '.SecretString')
+          echo "::add-mask::${publish_api_key}"
+          echo "GRAFANA_API_KEY=${publish_api_key}" >> $GITHUB_ENV
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
@@ -52,12 +72,13 @@ jobs:
         uses: magefile/mage-action@v1
         with:
           version: latest
-          args: buildAll
+          args: buildProd
 
-      - name: Sign plugin
-        run: npx @grafana/sign-plugin
-        env:
-          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }} # Requires a Grafana API key from Grafana.com.
+      # Uncomment after Grafana has assigned our account a plugin signature level (When your plugin is approved, you’re granted a plugin signature level.)
+      # Can't sign for a public plugin until then. See (https://grafana.com/docs/grafana/latest/developers/plugins/sign-a-plugin/#sign-a-public-plugin)
+      # This uses GRAFANA_API_KEY from the Import Grafana PluginPublish API KEY step
+      # - name: Sign plugin
+      #   run: npx @grafana/sign-plugin
 
       - name: Get plugin metadata
         id: metadata
@@ -90,6 +111,7 @@ jobs:
       - name: Package plugin
         id: package-plugin
         run: |
+          chmod 755 dist/gpx_*
           mv dist ${{ steps.metadata.outputs.plugin-id }}
           zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
           md5sum ${{ steps.metadata.outputs.archive }} > ${{ steps.metadata.outputs.archive-checksum }}
@@ -138,6 +160,6 @@ jobs:
 
       - name: Publish to Grafana.com
         run: |
-          echo A draft release has been created for your plugin. Please review and publish it. Then submit your plugin to grafana.com/plugins by opening a PR to https://github.com/grafana/grafana-plugin-repository with the following entry:
+          echo A draft release has been created for your plugin. Please review and publish it. Then submit your plugin under Org Settings -> My Plugins -> Submit Plugin on Grafana Cloud as a Single zip. Some of the following information will be required:
           echo
           echo '{ "id": "${{ steps.metadata.outputs.plugin-id }}", "type": "${{ steps.metadata.outputs.plugin-type }}", "url": "https://github.com/${{ github.repository }}", "versions": [ { "version": "${{ steps.metadata.outputs.plugin-version }}", "commit": "${{ github.sha }}", "url": "https://github.com/${{ github.repository }}", "download": { "any": { "url": "https://github.com/${{ github.repository }}/releases/download/v${{ steps.metadata.outputs.plugin-version }}/${{ steps.metadata.outputs.archive }}", "md5": "${{ steps.package-plugin.outputs.checksum }}" } } } ] }' | jq .

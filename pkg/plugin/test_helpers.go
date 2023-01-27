@@ -3,8 +3,8 @@ package plugin
 import (
 	"context"
 
+	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/metrist/metrist/pkg/internal"
 )
 
 var (

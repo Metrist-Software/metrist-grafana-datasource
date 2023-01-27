@@ -9,16 +9,21 @@ import { defaultQuery, DataSourceOptions, Query } from '../types';
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
-  const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
 
+  const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
+  const [buildHash, setBuildHash] = useState<string>();
+  
   useEffect(() => {
     const dataFetch = async () => {
       try {
         const monitors = await props.datasource.getResource('Monitors');
+        const hash = (await props.datasource.getResource('BuildHash')).hash;
+        setBuildHash(hash);
         setMonitors(monitors);
       } catch (e) {
         console.error(e)
         setMonitors([]);
+        setBuildHash("");
       }
     };
 
@@ -70,6 +75,10 @@ export const QueryEditor = (props: Props) => {
     return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
   }
 
+  if (buildHash === "") {
+    return <LoadingPlaceholder text={"Loading.."}></LoadingPlaceholder>
+  }
+
   return (
     <div style={{ width: '100%' }}> 
       <InlineFieldRow>
@@ -103,6 +112,7 @@ export const QueryEditor = (props: Props) => {
         </InlineField>
         {additionalFormFields(queryType)}
       </InlineFieldRow>
+      <div><sub>Query Version: {buildHash}</sub></div>
     </div>
   );
 }

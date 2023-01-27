@@ -20,11 +20,11 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/grafana-starter-datasource"
+        "url": "https://github.com/Metrist-Software/metrist-grafana-datasource"
       },
       {
         "name": "License",
-        "url": "https://github.com/grafana/grafana-starter-datasource/blob/master/LICENSE"
+        "url": "https://github.com/Metrist-Software/metrist-grafana-datasource/blob/main/LICENSE"
       }
     ],
     "screenshots": [],
@@ -32,7 +32,7 @@
     "updated": "%TODAY%"
   },
   "dependencies": {
-    "grafanaDependency": "^9.2.5",
+    "grafanaDependency": ">=9.2.5",
     "plugins": []
   }
 }

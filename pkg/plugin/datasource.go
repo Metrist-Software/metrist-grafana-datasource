@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/metrist/metrist/pkg/internal"
 )
 
 var (
@@ -169,6 +169,11 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			})
 		}
 		return sender.Send(&response)
+	case "BuildHash":
+		return sender.Send(&backend.CallResourceResponse{
+			Status: http.StatusOK,
+			Body:   []byte(fmt.Sprintf(`{"hash": "%s"}`, internal.BuildHash)),
+		})
 	default:
 		return sender.Send(&backend.CallResourceResponse{
 			Status: http.StatusNotFound,
