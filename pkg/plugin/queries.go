@@ -52,7 +52,6 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		},
 	}
 
-	log.DefaultLogger.Debug("errors, %v", responses)
 	for _, monitorError := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
 		if err != nil {
