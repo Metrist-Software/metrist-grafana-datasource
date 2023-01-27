@@ -89,7 +89,7 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	result := make([]internal.MonitorErrorCounts, maxPageCount)
+	result := make([]internal.MonitorErrorCounts, len(params))
 	// Runs 2 go routines if shared is included
 	// Each goroutine will page through the result
 	for i, param := range params {
