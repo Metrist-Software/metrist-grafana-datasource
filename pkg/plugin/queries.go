@@ -118,7 +118,7 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 
 	monitorErrors := make(internal.MonitorErrorCounts, 0)
 	for _, v := range result {
-		if v == nil {
+		if len(v) == 0 {
 			continue
 		}
 		monitorErrors = append(monitorErrors, v...)
