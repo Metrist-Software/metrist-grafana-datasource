@@ -96,23 +96,24 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 		param := param // https://golang.org/doc/faq#closures_and_goroutines
 		i := i
 		g.Go(func() error {
-			var cursorAfter *string
+			requestParam := internal.BackendWebMonitorErrorControllerGetParams{
+				From:       param.From,
+				To:         param.To,
+				M:          param.M,
+				OnlyShared: param.OnlyShared,
+			}
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &internal.BackendWebMonitorErrorControllerGetParams{
-					From:        param.From,
-					To:          param.To,
-					M:           param.M,
-					CursorAfter: cursorAfter,
-					OnlyShared:  param.OnlyShared,
-				})
+				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &param)
 				if err != nil {
 					return err
 				}
 				response := resp.JSON200
 				result[i] = append(result[i], *response.Entries...)
-				if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
-					break
+
+				if response.Metadata.CursorAfter == nil {
+					return nil
 				}
+				requestParam.CursorAfter = response.Metadata.CursorAfter
 			}
 			return nil
 		})
@@ -254,9 +255,10 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 	for pageCount := 0; pageCount < maxPageCount; pageCount++ {
 		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx,
 			&internal.BackendWebStatusPageChangeControllerGetParams{
-				From: from,
-				To:   &to,
-				M:    &query.Monitors,
+				From:        from,
+				To:          &to,
+				CursorAfter: cursorAfter,
+				M:           &query.Monitors,
 			})
 
 		if err != nil {
