@@ -186,7 +186,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 }
 
 func ensureTimeRangeWithinLimits(duration time.Duration) error {
-	if duration > durationThreeMonths {
+	if duration.Truncate(time.Hour) > durationThreeMonths {
 		return errTimerangeLimitExceeded
 	}
 
