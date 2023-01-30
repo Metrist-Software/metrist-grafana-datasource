@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"sort"
 	"time"
 
@@ -110,12 +109,15 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 				}
 
 				response := resp.JSON200
-				result[i] = append(result[i], *response.Entries...)
-				if response.Metadata.CursorAfter == nil {
+				if response == nil {
+					log.DefaultLogger.Warn("non 200 status code encountered. status %v, body %v", resp.HTTPResponse.Status, resp.Body)
 					return nil
 				}
 
-				currentParam.CursorAfter = urlEncodeCursor(response.Metadata.CursorAfter)
+				result[i] = append(result[i], *response.Entries...)
+				if currentParam.CursorAfter = response.Metadata.CursorAfter; currentParam.CursorAfter == nil {
+					break
+				}
 			}
 			return nil
 		})
@@ -252,17 +254,14 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 
 func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.StatusPageChanges, error) {
 	monitorStatuses := make(internal.StatusPageChanges, 0)
-	var cursorAfter *string = nil
 	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
+	params := internal.BackendWebStatusPageChangeControllerGetParams{
+		From: from,
+		To:   &to,
+		M:    &query.Monitors,
+	}
 	for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx,
-			&internal.BackendWebStatusPageChangeControllerGetParams{
-				From:        from,
-				To:          &to,
-				CursorAfter: cursorAfter,
-				M:           &query.Monitors,
-			})
-
+		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx, &params)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +269,7 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 		response := resp.JSON200
 		monitorStatuses = append(monitorStatuses, *response.Entries...)
 
-		if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
+		if params.CursorAfter = response.Metadata.CursorAfter; params.CursorAfter == nil {
 			break
 		}
 	}
@@ -293,13 +292,4 @@ func withAPIKey(apiKey string) internal.RequestEditorFn {
 		req.Header.Add("Authorization", apiKey)
 		return nil
 	}
-}
-
-func urlEncodeCursor(cursor *string) *string {
-	if cursor == nil {
-		return nil
-	}
-
-	result := url.QueryEscape(*cursor)
-	return &result
 }

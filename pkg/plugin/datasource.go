@@ -35,6 +35,11 @@ const (
 
 // NewDatasource creates a new datasource instance.
 func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	logRequestMeta := func(ctx context.Context, req *http.Request) error {
+		log.DefaultLogger.Debug("request header: %s", req.Header)
+		log.DefaultLogger.Debug("request query: %s", req.URL.RawQuery)
+		return nil
+	}
 	opts, err := settings.HTTPClientOptions()
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
@@ -50,7 +55,7 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 		return nil, errMissingApiKey
 	}
 
-	openApiClient, err := internal.NewClientWithResponses(internal.Endpoint(), internal.WithHTTPClient(cl), internal.WithRequestEditorFn(withAPIKey(apiKey)))
+	openApiClient, err := internal.NewClientWithResponses(internal.Endpoint(), internal.WithHTTPClient(cl), internal.WithRequestEditorFn(withAPIKey(apiKey)), internal.WithRequestEditorFn(logRequestMeta))
 	if err != nil {
 		return nil, fmt.Errorf("internal new client: %w", err)
 	}
