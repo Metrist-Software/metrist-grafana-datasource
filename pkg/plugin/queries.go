@@ -89,27 +89,50 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	monitorErrors := make(internal.MonitorErrorCounts, 0)
-	for _, param := range params {
+	result := make([]internal.MonitorErrorCounts, len(params))
+	// Runs 2 go routines if shared is included
+	// Each goroutine will page through the result
+	for i, param := range params {
 		param := param // https://golang.org/doc/faq#closures_and_goroutines
+		i := i
 		g.Go(func() error {
-			var cursorAfter *string
+			currentParam := internal.BackendWebMonitorErrorControllerGetParams{
+				From:       param.From,
+				To:         param.To,
+				M:          param.M,
+				OnlyShared: param.OnlyShared,
+			}
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &param)
+				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &currentParam)
 				if err != nil {
 					return err
 				}
+
 				response := resp.JSON200
-				monitorErrors = append(monitorErrors, *response.Entries...)
-				if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
+				if response == nil {
+					log.DefaultLogger.Warn("non 200 status code encountered. status %v, body %v", resp.HTTPResponse.Status, resp.Body)
+					return nil
+				}
+
+				result[i] = append(result[i], *response.Entries...)
+				if currentParam.CursorAfter = response.Metadata.CursorAfter; currentParam.CursorAfter == nil {
 					break
 				}
 			}
 			return nil
 		})
 	}
+
 	if err := g.Wait(); err != nil {
 		return nil, err
+	}
+
+	monitorErrors := make(internal.MonitorErrorCounts, 0)
+	for _, v := range result {
+		if len(v) == 0 {
+			continue
+		}
+		monitorErrors = append(monitorErrors, v...)
 	}
 	sort.SliceStable(monitorErrors, func(i, j int) bool {
 		return strToTime(*monitorErrors[i].Timestamp).Before(strToTime(*monitorErrors[j].Timestamp))
@@ -231,16 +254,14 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 
 func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.StatusPageChanges, error) {
 	monitorStatuses := make(internal.StatusPageChanges, 0)
-	var cursorAfter *string = nil
 	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
+	params := internal.BackendWebStatusPageChangeControllerGetParams{
+		From: from,
+		To:   &to,
+		M:    &query.Monitors,
+	}
 	for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx,
-			&internal.BackendWebStatusPageChangeControllerGetParams{
-				From: from,
-				To:   &to,
-				M:    &query.Monitors,
-			})
-
+		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx, &params)
 		if err != nil {
 			return nil, err
 		}
@@ -248,7 +269,7 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 		response := resp.JSON200
 		monitorStatuses = append(monitorStatuses, *response.Entries...)
 
-		if cursorAfter = response.Metadata.CursorAfter; cursorAfter == nil {
+		if params.CursorAfter = response.Metadata.CursorAfter; params.CursorAfter == nil {
 			break
 		}
 	}
