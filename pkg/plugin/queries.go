@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"sort"
 	"time"
 
@@ -96,24 +97,25 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 		param := param // https://golang.org/doc/faq#closures_and_goroutines
 		i := i
 		g.Go(func() error {
-			requestParam := internal.BackendWebMonitorErrorControllerGetParams{
+			currentParam := internal.BackendWebMonitorErrorControllerGetParams{
 				From:       param.From,
 				To:         param.To,
 				M:          param.M,
 				OnlyShared: param.OnlyShared,
 			}
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
-				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &param)
+				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &currentParam)
 				if err != nil {
 					return err
 				}
+
 				response := resp.JSON200
 				result[i] = append(result[i], *response.Entries...)
-
 				if response.Metadata.CursorAfter == nil {
 					return nil
 				}
-				requestParam.CursorAfter = response.Metadata.CursorAfter
+
+				currentParam.CursorAfter = urlEncodeCursor(response.Metadata.CursorAfter)
 			}
 			return nil
 		})
@@ -291,4 +293,13 @@ func withAPIKey(apiKey string) internal.RequestEditorFn {
 		req.Header.Add("Authorization", apiKey)
 		return nil
 	}
+}
+
+func urlEncodeCursor(cursor *string) *string {
+	if cursor == nil {
+		return nil
+	}
+
+	result := url.QueryEscape(*cursor)
+	return &result
 }
