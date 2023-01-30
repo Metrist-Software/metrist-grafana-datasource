@@ -36,8 +36,7 @@ const (
 // NewDatasource creates a new datasource instance.
 func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	logRequestMeta := func(ctx context.Context, req *http.Request) error {
-		log.DefaultLogger.Debug("request header: %s", req.Header)
-		log.DefaultLogger.Debug("request query: %s", req.URL.RawQuery)
+		log.DefaultLogger.Debug("request url: %s, header %s", req.URL.String(), req.Header)
 		return nil
 	}
 	opts, err := settings.HTTPClientOptions()
