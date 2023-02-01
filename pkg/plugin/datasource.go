@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,13 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 	opts, err := settings.HTTPClientOptions()
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
+	}
+
+	opts.ConfigureTLSConfig = func(opts httpclient.Options, tlsConfig *tls.Config) {
+		if internal.Environment == "local" {
+			// We skip TLS verification if running against local as self signed certificates may be being used
+			tlsConfig.InsecureSkipVerify = true
+		}
 	}
 
 	cl, err := httpclient.New(opts)

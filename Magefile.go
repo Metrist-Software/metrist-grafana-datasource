@@ -18,6 +18,11 @@ func BuildProd() error {
 }
 
 // Generate a dev build (pointing to the dev API)
+func BuildLocal() error {
+	return buildForEnv("local")
+}
+
+// Generate a dev build (pointing to the dev API)
 func BuildDev() error {
 	return buildForEnv("dev")
 }
