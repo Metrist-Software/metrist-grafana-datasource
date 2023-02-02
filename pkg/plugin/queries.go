@@ -148,6 +148,11 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 
 // QueryMonitorTelemetry queries `/monitor-telemetry`
 func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
+	if err := ensureTelemetryRequestWithinLast90Days(query.TimeRange.From); err != nil {
+		log.DefaultLogger.Error("telemetry requested for greater than 90 days error: %w", err)
+		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error()), err
+	}
+
 	var monitorTelemetryQuery monitorTelemetryQuery
 
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
@@ -302,9 +307,20 @@ func withAPIKey(apiKey string) internal.RequestEditorFn {
 }
 
 func nilIfEmpty(slice *[]string) *[]string {
-	if len(*slice) == 0 {
+	if slice == nil || len(*slice) == 0 {
 		return nil
 	} else {
 		return slice
 	}
+}
+
+func ensureTelemetryRequestWithinLast90Days(fromDate time.Time) error {
+	currentTime := time.Now().In(fromDate.Location())
+	threeMonthsAgo := currentTime.Add(-durationThreeMonths)
+
+	if time.Time.Before(fromDate, threeMonthsAgo) {
+		return errTelemetryRequestedOutsideBounds
+	}
+
+	return nil
 }
