@@ -76,6 +76,8 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 		From: tr.From,
 		To:   tr.To,
 		M:    query.Monitors,
+		C:    query.Checks,
+		I:    query.Instances,
 	}}
 
 	if query.IncludeShared {
@@ -84,6 +86,8 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 			To:         tr.To,
 			M:          query.Monitors,
 			OnlyShared: &onlyShared,
+			C:          query.Checks,
+			I:          query.Instances,
 		})
 	}
 
@@ -100,7 +104,10 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 				To:         param.To,
 				M:          param.M,
 				OnlyShared: param.OnlyShared,
+				C:          nilIfEmpty(param.C),
+				I:          nilIfEmpty(param.I),
 			}
+
 			for pageCount := 0; pageCount < maxPageCount; pageCount++ {
 				resp, err := client.BackendWebMonitorErrorControllerGetWithResponse(ctx, &currentParam)
 				if err != nil {
@@ -147,13 +154,16 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
 
-	resp, err := client.BackendWebMonitorTelemetryControllerGetWithResponse(ctx,
-		&internal.BackendWebMonitorTelemetryControllerGetParams{
-			From:          query.TimeRange.From,
-			To:            query.TimeRange.To,
-			M:             monitorTelemetryQuery.Monitors,
-			IncludeShared: &monitorTelemetryQuery.IncludeShared,
-		})
+	params := internal.BackendWebMonitorTelemetryControllerGetParams{
+		From:          query.TimeRange.From,
+		To:            query.TimeRange.To,
+		M:             monitorTelemetryQuery.Monitors,
+		IncludeShared: &monitorTelemetryQuery.IncludeShared,
+		C:             nilIfEmpty(monitorTelemetryQuery.Checks),
+		I:             nilIfEmpty(monitorTelemetryQuery.Instances),
+	}
+
+	resp, err := client.BackendWebMonitorTelemetryControllerGetWithResponse(ctx, &params)
 
 	if err != nil {
 		return backend.DataResponse{}, err
@@ -288,5 +298,13 @@ func withAPIKey(apiKey string) internal.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("Authorization", apiKey)
 		return nil
+	}
+}
+
+func nilIfEmpty(slice *[]string) *[]string {
+	if len(*slice) == 0 {
+		return nil
+	} else {
+		return slice
 	}
 }

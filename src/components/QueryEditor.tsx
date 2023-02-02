@@ -36,14 +36,13 @@ export const QueryEditor = (props: Props) => {
   useEffect(() => {
     const dataFetch = async () => {
       try {
-        const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
-        console.log(checks)
-        // test 
-        setChecks(checks)
-  
-        const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
-        console.log(instances)
-        setInstances(instances)
+        if (props.query.monitors != null) {
+          const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+          setChecks(checks)
+    
+          const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+          setInstances(instances)
+        }
       } catch (e) {
         console.error(e)
         setChecks([]);
@@ -52,7 +51,7 @@ export const QueryEditor = (props: Props) => {
     };
 
     dataFetch();
-  }, [props.query.monitors, props.query.includeShared]);
+  }, [props.datasource, props.query.monitors, props.query.includeShared]);
 
   const queryTypeChange = (val: SelectableValue<string>) => {
     const { onChange, query, onRunQuery } = props;

@@ -224,6 +224,12 @@ type BackendWebMonitorErrorControllerGetParams struct {
 	// OnlyShared Whether to only return SHARED data in returned results. If omitted, the account specific data is returned
 	OnlyShared *bool `form:"only_shared,omitempty" json:"only_shared,omitempty"`
 
+	// C The checks to limit the query to
+	C *[]string `form:"c[],omitempty" json:"c[],omitempty"`
+
+	// I The instances to limit the query to
+	I *[]string `form:"i[],omitempty" json:"i[],omitempty"`
+
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
 	// If omitted all monitors on the account are included
@@ -276,6 +282,12 @@ type BackendWebMonitorTelemetryControllerGetParams struct {
 
 	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
 	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
+
+	// C The checks to limit the query to
+	C *[]string `form:"c[],omitempty" json:"c[],omitempty"`
+
+	// I The instances to limit the query to
+	I *[]string `form:"i[],omitempty" json:"i[],omitempty"`
 
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
@@ -773,6 +785,38 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 
 	}
 
+	if params.C != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "c[]", runtime.ParamLocationQuery, *params.C); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.I != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "i[]", runtime.ParamLocationQuery, *params.I); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
 	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
 		return nil, err
 	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
@@ -1091,6 +1135,38 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 	if params.IncludeShared != nil {
 
 		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_shared", runtime.ParamLocationQuery, *params.IncludeShared); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.C != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "c[]", runtime.ParamLocationQuery, *params.C); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.I != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "i[]", runtime.ParamLocationQuery, *params.I); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err

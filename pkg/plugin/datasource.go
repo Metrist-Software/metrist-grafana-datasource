@@ -173,15 +173,6 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 
 // CallResource implements backend.CallResourceHandler
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
-	out, err := json.Marshal(req)
-	if err != nil {
-		panic(err)
-	}
-
-	log.DefaultLogger.Debug("test123 =====================================")
-	log.DefaultLogger.Debug(string(out))
-	log.DefaultLogger.Debug(req.URL)
-
 	// Parameters from getResource come in as query string parameters in the URL property
 	var queryStringValues url.Values
 	var er error
@@ -205,7 +196,6 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		}
 		return sender.Send(&response)
 	case "Checks":
-		log.DefaultLogger.Debug("GETTING CHECKS")
 		response, err := ResourceCheckList(ctx, d.openApiClient, strings.Split(queryStringValues["monitors"][0], ","), queryStringValues["includeShared"][0] == "true")
 		if err != nil {
 			log.DefaultLogger.Error("checks list error: %w", err)

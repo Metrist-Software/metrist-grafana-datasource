@@ -8,8 +8,10 @@ type queryModel struct {
 // Once we start having completely different fields for each query, let's start making
 // multiple query struct for each query
 type monitorTelemetryQuery struct {
-	Monitors      []string `json:"monitors"`
-	IncludeShared bool     `json:"includeshared"`
+	Monitors      []string  `json:"monitors"`
+	Checks        *[]string `json:"checks"`
+	Instances     *[]string `json:"instances"`
+	IncludeShared bool      `json:"includeshared"`
 }
 
 type selectOption struct {
