@@ -30,7 +30,7 @@ var (
 	errRemoteResponse                  = errors.New("remote response error")
 	errMissingApiKey                   = errors.New("missing api key")
 	errTimerangeLimitExceeded          = errors.New("time range cannot exceed 90 days")
-	errTelemetryRequestedOutsideBounds = errors.New("only 90 days of telemetry is available")
+	errTelemetryRequestedOutsideBounds = errors.New("telemetry is only available for the past 90 days")
 )
 
 const (
