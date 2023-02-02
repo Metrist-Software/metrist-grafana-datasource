@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
@@ -57,7 +59,7 @@ func ResourceCheckList(ctx context.Context, client internal.ClientWithResponsesI
 	for _, item := range checkList {
 		for _, check := range *item.Checks {
 			options = append(options, selectOption{
-				Label: fmt.Sprintf("%s-%s", *item.MonitorLogicalName, *check.Name),
+				Label: fmt.Sprintf("%s:%s", *item.MonitorLogicalName, *check.Name),
 				Value: *check.LogicalName,
 			})
 		}
@@ -83,15 +85,24 @@ func ResourceInstanceList(ctx context.Context, client internal.ClientWithRespons
 	}
 
 	instanceList := *resp.JSON200
-	options := make(selectOptions, 0)
 
+	all_instances := make([]string, 0)
 	for _, item := range instanceList {
 		for _, instance := range *item.Instances {
-			options = append(options, selectOption{
-				Label: fmt.Sprintf("%s-%s", *item.MonitorLogicalName, instance),
-				Value: instance,
-			})
+			if !slices.Contains(all_instances, instance) {
+				all_instances = append(all_instances, instance)
+			}
 		}
+	}
+
+	slices.Sort(all_instances)
+
+	options := make(selectOptions, 0)
+	for _, instance := range all_instances {
+		options = append(options, selectOption{
+			Label: instance,
+			Value: instance,
+		})
 	}
 
 	optionsJson, err := json.Marshal(options)

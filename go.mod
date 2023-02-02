@@ -8,6 +8,8 @@ require (
 	github.com/grafana/grafana-plugin-sdk-go v0.145.0
 )
 
+require golang.org/x/exp v0.0.0-20230202163644-54bba9f4231b // indirect
+
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect

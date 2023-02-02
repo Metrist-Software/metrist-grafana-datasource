@@ -1,23 +1,20 @@
 import defaults from 'lodash/defaults';
 
 import React, { ChangeEvent, useEffect, useState } from 'react';
-import { InlineField, InlineFieldRow, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
+import { InlineField, InlineFieldRow, InlineLabel, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
-
-import { getBackendSrv } from '@grafana/runtime';
-import { lastValueFrom } from 'rxjs';
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
 
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
-  const [checkSelect, _setChecks] = useState<Array<SelectableValue<string>>>();
-  const [instanceSelect, _setInstances] = useState<Array<SelectableValue<string>>>();
+  const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
+  const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
   const [buildHash, setBuildHash] = useState<string>();
-  
+
   useEffect(() => {
     const dataFetch = async () => {
       try {
@@ -35,6 +32,28 @@ export const QueryEditor = (props: Props) => {
     dataFetch();
   }, [props.datasource]);
 
+  // If query.monitors or query.includeShared change, then reload the checks and instances list
+  useEffect(() => {
+    const dataFetch = async () => {
+      try {
+        const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+        console.log(checks)
+        // test 
+        setChecks(checks)
+  
+        const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+        console.log(instances)
+        setInstances(instances)
+      } catch (e) {
+        console.error(e)
+        setChecks([]);
+        setInstances([]);
+      }
+    };
+
+    dataFetch();
+  }, [props.query.monitors, props.query.includeShared]);
+
   const queryTypeChange = (val: SelectableValue<string>) => {
     const { onChange, query, onRunQuery } = props;
     onChange({ ...query, queryType: val.value as string });
@@ -45,21 +64,6 @@ export const QueryEditor = (props: Props) => {
     const { onChange, query, onRunQuery } = props;
 
     const monitors = vals.map(v => v.value as string)
-
-    const observableChecks = 
-      getBackendSrv()
-      .fetch({ url: `/api/datasources/${props.datasource.id}/resources/Checks?monitors=${monitors.join(",")}&includeShared=${query.includeShared}`});
-
-    await lastValueFrom(observableChecks);      
-
-    const observableInstances = 
-      getBackendSrv()
-      .fetch({ url: `/api/datasources/${props.datasource.id}/resources/Instances?monitors=${monitors.join(",")}&includeShared=${query.includeShared}`});
-
-    await lastValueFrom(observableInstances);      
-
-    // await props.datasource.getResource('Checks', { monitors: monitors.join(","), includeShared: query.includeShared });
-    // await props.datasource.getResource('Instances', { monitors: monitors.join(","), includeShared: query.includeShared });
 
     onChange({ ...query, monitors: monitors });
     onRunQuery();
@@ -109,7 +113,9 @@ export const QueryEditor = (props: Props) => {
       case 'GetMonitorErrors':
       case 'GetMonitorTelemetry':
         return (
-            <InlineFieldRow>
+            <div>
+            <InlineLabel>Additional Filters (Optional)</InlineLabel>
+            <InlineFieldRow>            
             <InlineField label="Checks" labelWidth={14}>
               <MultiSelect
                 options={checkSelect}
@@ -127,6 +133,7 @@ export const QueryEditor = (props: Props) => {
               />
             </InlineField>
           </InlineFieldRow>
+          </div>
           )
       case 'GetMonitorStatusPageChanges':
       case 'GetMonitorStatus':
