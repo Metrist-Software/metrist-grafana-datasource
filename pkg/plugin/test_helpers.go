@@ -24,6 +24,8 @@ type stubClient struct {
 	statusPageResponse  internal.BackendWebStatusPageChangeControllerGetResponse
 	errorResponse       internal.BackendWebMonitorErrorControllerGetResponse
 	monitorListResponse internal.BackendWebMonitorListControllerGetResponse
+	checksResponse      internal.BackendWebMonitorCheckControllerGetResponse
+	instancesResponse   internal.BackendWebMonitorInstanceControllerGetResponse
 }
 
 func (m *stubClient) BackendWebMonitorTelemetryControllerGetWithResponse(ctx context.Context,
@@ -47,4 +49,16 @@ func (m *stubClient) BackendWebMonitorErrorControllerGetWithResponse(ctx context
 func (m *stubClient) BackendWebMonitorListControllerGetWithResponse(ctx context.Context,
 	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebMonitorListControllerGetResponse, error) {
 	return &m.monitorListResponse, m.err
+}
+
+func (m *stubClient) BackendWebMonitorCheckControllerGetWithResponse(ctx context.Context,
+	params *internal.BackendWebMonitorCheckControllerGetParams,
+	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebMonitorCheckControllerGetResponse, error) {
+	return &m.checksResponse, m.err
+}
+
+func (m *stubClient) BackendWebMonitorInstanceControllerGetWithResponse(ctx context.Context,
+	params *internal.BackendWebMonitorInstanceControllerGetParams,
+	reqEditors ...internal.RequestEditorFn) (*internal.BackendWebMonitorInstanceControllerGetResponse, error) {
+	return &m.instancesResponse, m.err
 }

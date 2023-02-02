@@ -36,16 +36,19 @@ const (
 	Up          MonitorStatusesState = "up"
 )
 
+// MonitorCheck A single monitor check
+type MonitorCheck struct {
+	// LogicalName The logical name of the check
+	LogicalName *string `json:"logical_name,omitempty"`
+
+	// Name The display name of the check
+	Name *string `json:"name,omitempty"`
+}
+
 // MonitorChecks A list of monitors + their checks
 type MonitorChecks = []struct {
 	// Checks The unique checks for that monitor
-	Checks *[]struct {
-		// LogicalName The logical name of the check
-		LogicalName *string `json:"logical_name,omitempty"`
-
-		// Name The display name of the check
-		Name *string `json:"name,omitempty"`
-	} `json:"checks,omitempty"`
+	Checks *[]MonitorCheck `json:"checks,omitempty"`
 
 	// MonitorLogicalName The logical name of the monitor
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
