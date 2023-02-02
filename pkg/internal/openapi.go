@@ -111,8 +111,8 @@ type MonitorErrorResponse struct {
 
 // MonitorInstances A list of monitors + their instances
 type MonitorInstances = []struct {
-	// Checks The unique instances for that monitor
-	Checks *[]string `json:"checks,omitempty"`
+	// Instances The unique instances for that monitor
+	Instances *[]string `json:"instances,omitempty"`
 
 	// MonitorLogicalName The logical name of the monitor
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`

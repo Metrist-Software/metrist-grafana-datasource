@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
@@ -40,6 +42,7 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 		log.DefaultLogger.Debug("request url: %s, header %s", req.URL.String(), req.Header)
 		return nil
 	}
+
 	opts, err := settings.HTTPClientOptions()
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
@@ -170,11 +173,52 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 
 // CallResource implements backend.CallResourceHandler
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	out, err := json.Marshal(req)
+	if err != nil {
+		panic(err)
+	}
+
+	log.DefaultLogger.Debug("test123 =====================================")
+	log.DefaultLogger.Debug(string(out))
+	log.DefaultLogger.Debug(req.URL)
+
+	// Parameters from getResource come in as query string parameters in the URL property
+	var queryStringValues url.Values
+	var er error
+	if strings.Index(req.URL, "?") > 0 {
+		queryStringValues, er = url.ParseQuery(strings.Split(req.URL, "?")[1])
+	}
+
+	if er != nil {
+		return er
+	}
+
 	switch req.Path {
 	case "Monitors":
 		response, err := ResourceMonitorList(ctx, d.openApiClient)
 		if err != nil {
 			log.DefaultLogger.Error("resource monitor list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	case "Checks":
+		log.DefaultLogger.Debug("GETTING CHECKS")
+		response, err := ResourceCheckList(ctx, d.openApiClient, strings.Split(queryStringValues["monitors"][0], ","), queryStringValues["includeShared"][0] == "true")
+		if err != nil {
+			log.DefaultLogger.Error("checks list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	case "Instances":
+		response, err := ResourceInstanceList(ctx, d.openApiClient, strings.Split(queryStringValues["monitors"][0], ","), queryStringValues["includeShared"][0] == "true")
+		if err != nil {
+			log.DefaultLogger.Error("instances list error: %w", err)
 			return sender.Send(&backend.CallResourceResponse{
 				Status: http.StatusInternalServerError,
 				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),

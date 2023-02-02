@@ -69,27 +69,26 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
 }
 
-func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.MonitorErrorCounts, error) {
+func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.MonitorErrorCount, error) {
 	onlyShared := true
-	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
 
 	params := []internal.BackendWebMonitorErrorControllerGetParams{{
-		From: from,
-		To:   &to,
-		M:    &query.Monitors,
+		From: tr.From,
+		To:   tr.To,
+		M:    query.Monitors,
 	}}
 
 	if query.IncludeShared {
 		params = append(params, internal.BackendWebMonitorErrorControllerGetParams{
-			From:       from,
-			To:         &to,
-			M:          &query.Monitors,
+			From:       tr.From,
+			To:         tr.To,
+			M:          query.Monitors,
 			OnlyShared: &onlyShared,
 		})
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	result := make([]internal.MonitorErrorCounts, len(params))
+	result := make([][]internal.MonitorErrorCount, len(params))
 	// Runs 2 go routines if shared is included
 	// Each goroutine will page through the result
 	for i, param := range params {
@@ -127,7 +126,7 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 		return nil, err
 	}
 
-	monitorErrors := make(internal.MonitorErrorCounts, 0)
+	monitorErrors := make([]internal.MonitorErrorCount, 0)
 	for _, v := range result {
 		if len(v) == 0 {
 			continue
@@ -142,7 +141,6 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 
 // QueryMonitorTelemetry queries `/monitor-telemetry`
 func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
-	from, to := query.TimeRange.From.Format(time.RFC3339), query.TimeRange.To.Format(time.RFC3339)
 	var monitorTelemetryQuery monitorTelemetryQuery
 
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
@@ -151,9 +149,9 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 	resp, err := client.BackendWebMonitorTelemetryControllerGetWithResponse(ctx,
 		&internal.BackendWebMonitorTelemetryControllerGetParams{
-			From:          from,
-			To:            &to,
-			M:             &monitorTelemetryQuery.Monitors,
+			From:          query.TimeRange.From,
+			To:            query.TimeRange.To,
+			M:             monitorTelemetryQuery.Monitors,
 			IncludeShared: &monitorTelemetryQuery.IncludeShared,
 		})
 
@@ -252,13 +250,12 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
 }
 
-func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) (internal.StatusPageChanges, error) {
-	monitorStatuses := make(internal.StatusPageChanges, 0)
-	from, to := tr.From.Format(time.RFC3339), tr.To.Format(time.RFC3339)
+func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.StatusPageComponentChange, error) {
+	monitorStatuses := make([]internal.StatusPageComponentChange, 0)
 	params := internal.BackendWebStatusPageChangeControllerGetParams{
-		From: from,
-		To:   &to,
-		M:    &query.Monitors,
+		From: tr.From,
+		To:   &tr.To,
+		M:    query.Monitors,
 	}
 	for pageCount := 0; pageCount < maxPageCount; pageCount++ {
 		resp, err := client.BackendWebStatusPageChangeControllerGetWithResponse(ctx, &params)
