@@ -22,10 +22,12 @@ go get
 go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest # Required for openapi codegen
 asdf reshim
 
-mage -v                     # Build the backend
-npm run dev                 # Build the frontend
-npm run server              # Run grafana server
-npm run server:with-plugin  # Run grafana server with the datasource plugin ready to be installed
+mage -v                          # Build the backend
+npm run dev                      # Build the frontend
+npm run server                   # Run grafana server
+npm run server:with-plugin       # Run grafana server with the datasource plugin ready to be installed pointed to dev
+npm run server:with-plugin-local # Run grafana server with the datasource plugin ready to be installed pointed to local
+npm run server:with-plugin-prod  # Run grafana server with the datasource plugin ready to be installed pointed to prod
 ```
 
 
