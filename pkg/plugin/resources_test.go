@@ -10,16 +10,19 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
+type args struct {
+	client internal.ClientWithResponsesInterface
+}
+
+type test struct {
+	name    string
+	args    args
+	want    backend.CallResourceResponse
+	wantErr bool
+}
+
 func TestResourceMonitorList(t *testing.T) {
-	type args struct {
-		client internal.ClientWithResponsesInterface
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    backend.CallResourceResponse
-		wantErr bool
-	}{
+	tests := []test{
 		{
 			name: "serializes list of monitors properly properly",
 			args: args{
@@ -62,15 +65,7 @@ func TestResourceMonitorList(t *testing.T) {
 }
 
 func TestResourceChecksList(t *testing.T) {
-	type args struct {
-		client internal.ClientWithResponsesInterface
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    backend.CallResourceResponse
-		wantErr bool
-	}{
+	tests := []test{
 		{
 			name: "serializes list of checks properly properly with proper combining of monitor names",
 			args: args{
@@ -132,15 +127,7 @@ func TestResourceChecksList(t *testing.T) {
 }
 
 func TestInstancesList(t *testing.T) {
-	type args struct {
-		client internal.ClientWithResponsesInterface
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    backend.CallResourceResponse
-		wantErr bool
-	}{
+	tests := []test{
 		{
 			name: "serializes list of instances properly removing duplicates",
 			args: args{
