@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"golang.org/x/exp/slices"
 
@@ -64,6 +65,10 @@ func ResourceCheckList(ctx context.Context, client internal.ClientWithResponsesI
 			})
 		}
 	}
+
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Label < options[j].Label
+	})
 
 	optionsJson, err := json.Marshal(options)
 	if err != nil {

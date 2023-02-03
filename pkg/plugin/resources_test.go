@@ -10,22 +10,22 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
-type args struct {
+type testArgsWithClientWithResponse struct {
 	client internal.ClientWithResponsesInterface
 }
 
-type test struct {
+type testWithCallResourceResponse struct {
 	name    string
-	args    args
+	args    testArgsWithClientWithResponse
 	want    backend.CallResourceResponse
 	wantErr bool
 }
 
 func TestResourceMonitorList(t *testing.T) {
-	tests := []test{
+	tests := []testWithCallResourceResponse{
 		{
 			name: "serializes list of monitors properly properly",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
 					JSON200: &internal.MonitorList{{LogicalName: ptr("AWS Lambda"), Name: ptr("awslambda")}},
 				}},
@@ -38,7 +38,7 @@ func TestResourceMonitorList(t *testing.T) {
 		},
 		{
 			name: "handles empty monitor list",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
 					JSON200: &internal.MonitorList{},
 				}},
@@ -65,10 +65,10 @@ func TestResourceMonitorList(t *testing.T) {
 }
 
 func TestResourceChecksList(t *testing.T) {
-	tests := []test{
+	tests := []testWithCallResourceResponse{
 		{
 			name: "serializes list of checks properly properly with proper combining of monitor names",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{checksResponse: internal.BackendWebMonitorCheckControllerGetResponse{
 					JSON200: &internal.MonitorChecks{
 						{
@@ -100,7 +100,7 @@ func TestResourceChecksList(t *testing.T) {
 		},
 		{
 			name: "handles empty checks list",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{checksResponse: internal.BackendWebMonitorCheckControllerGetResponse{
 					JSON200: &internal.MonitorChecks{},
 				}},
@@ -127,10 +127,10 @@ func TestResourceChecksList(t *testing.T) {
 }
 
 func TestInstancesList(t *testing.T) {
-	tests := []test{
+	tests := []testWithCallResourceResponse{
 		{
 			name: "serializes list of instances properly removing duplicates",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{instancesResponse: internal.BackendWebMonitorInstanceControllerGetResponse{
 					JSON200: &internal.MonitorInstances{
 						{
@@ -157,7 +157,7 @@ func TestInstancesList(t *testing.T) {
 		},
 		{
 			name: "handles empty instances list",
-			args: args{
+			args: testArgsWithClientWithResponse{
 				client: &stubClient{instancesResponse: internal.BackendWebMonitorInstanceControllerGetResponse{
 					JSON200: &internal.MonitorInstances{},
 				}},
