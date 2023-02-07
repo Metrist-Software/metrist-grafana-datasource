@@ -41,13 +41,8 @@ func ResourceMonitorList(ctx context.Context, client internal.ClientWithResponse
 	}, nil
 }
 
-func BoolAddr(b bool) *bool {
-	boolVar := b
-	return &boolVar
-}
-
 func ResourceCheckList(ctx context.Context, client internal.ClientWithResponsesInterface, monitors []string, includeShared bool) (backend.CallResourceResponse, error) {
-	params := internal.BackendWebMonitorCheckControllerGetParams{M: monitors, IncludeShared: BoolAddr(includeShared)}
+	params := internal.BackendWebMonitorCheckControllerGetParams{M: monitors, IncludeShared: &includeShared}
 
 	resp, err := client.BackendWebMonitorCheckControllerGetWithResponse(ctx, &params)
 	if err != nil {
@@ -82,7 +77,7 @@ func ResourceCheckList(ctx context.Context, client internal.ClientWithResponsesI
 }
 
 func ResourceInstanceList(ctx context.Context, client internal.ClientWithResponsesInterface, monitors []string, includeShared bool) (backend.CallResourceResponse, error) {
-	params := internal.BackendWebMonitorInstanceControllerGetParams{M: monitors, IncludeShared: BoolAddr(includeShared)}
+	params := internal.BackendWebMonitorInstanceControllerGetParams{M: monitors, IncludeShared: &includeShared}
 
 	resp, err := client.BackendWebMonitorInstanceControllerGetWithResponse(ctx, &params)
 	if err != nil {
