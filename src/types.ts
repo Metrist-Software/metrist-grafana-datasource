@@ -2,6 +2,8 @@ import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
 export interface Query extends DataQuery {
   monitors: string[];
+  checks: string[];
+  instances: string[];
   includeShared: boolean;
 }
 

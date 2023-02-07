@@ -12,12 +12,13 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
 )
 
 const (
-	BearerScopes = "Bearer.Scopes"
+	AuthorizationScopes = "authorization.Scopes"
 )
 
 // Defines values for MonitorConfigRunSpecRunType.
@@ -26,47 +27,63 @@ const (
 	Exe MonitorConfigRunSpecRunType = "exe"
 )
 
+// Defines values for MonitorStatusesState.
+const (
+	Degraded    MonitorStatusesState = "degraded"
+	Down        MonitorStatusesState = "down"
+	Issues      MonitorStatusesState = "issues"
+	Maintenance MonitorStatusesState = "maintenance"
+	Up          MonitorStatusesState = "up"
+)
+
+// MonitorCheck A single monitor check
+type MonitorCheck struct {
+	// LogicalName The logical name of the check
+	LogicalName *string `json:"logical_name,omitempty"`
+
+	// Name The display name of the check
+	Name *string `json:"name,omitempty"`
+}
+
+// MonitorChecks A list of monitors + their checks
+type MonitorChecks = []struct {
+	// Checks The unique checks for that monitor
+	Checks *[]MonitorCheck `json:"checks,omitempty"`
+
+	// MonitorLogicalName The logical name of the monitor
+	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
+}
+
 // MonitorConfig A monitor configuration definition
 type MonitorConfig struct {
 	// IntervalSecs The time between monitor runs in seconds
-	IntervalSecs *int `json:"interval_secs,omitempty"`
+	IntervalSecs int `json:"interval_secs"`
 
 	// MonitorLogicalName The monitor logical name of the monitor to configure
-	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
+	MonitorLogicalName string `json:"monitor_logical_name"`
 
 	// RunGroups The run groups for this config
-	RunGroups *[]string `json:"run_groups,omitempty"`
+	RunGroups []interface{} `json:"run_groups"`
+	RunSpec   struct {
+		// Name The name of the monitor
+		Name *string `json:"name,omitempty"`
 
-	// RunSpec A run specification for a monitor config
-	RunSpec *MonitorConfigRunSpec `json:"run_spec,omitempty"`
+		// RunType The run type, one of dll, exe
+		RunType *MonitorConfigRunSpecRunType `json:"run_type,omitempty"`
+	} `json:"run_spec"`
 
-	// Steps A collection of Monitor Config Steps
-	Steps *MonitorConfigSteps `json:"steps,omitempty"`
-}
+	// Steps The run groups for this config
+	Steps []struct {
+		// CheckLogicalName The name of the check to run
+		CheckLogicalName *string `json:"check_logical_name,omitempty"`
 
-// MonitorConfigRunSpec A run specification for a monitor config
-type MonitorConfigRunSpec struct {
-	// Name The name of the monitor
-	Name *string `json:"name,omitempty"`
-
-	// RunType The run type, one of dll, exe
-	RunType *MonitorConfigRunSpecRunType `json:"run_type,omitempty"`
+		// TimeoutSecs The timeout value for the check
+		TimeoutSecs *int `json:"timeout_secs,omitempty"`
+	} `json:"steps"`
 }
 
 // MonitorConfigRunSpecRunType The run type, one of dll, exe
 type MonitorConfigRunSpecRunType string
-
-// MonitorConfigStep A monitor configuration definition
-type MonitorConfigStep struct {
-	// CheckLogicalName The name of the check to run
-	CheckLogicalName *string `json:"check_logical_name,omitempty"`
-
-	// TimeoutSecs The timeout value for the check
-	TimeoutSecs *int `json:"timeout_secs,omitempty"`
-}
-
-// MonitorConfigSteps A collection of Monitor Config Steps
-type MonitorConfigSteps = []MonitorConfigStep
 
 // MonitorErrorCount A count of monitor errors per Monitor, Instance and Check
 type MonitorErrorCount struct {
@@ -86,50 +103,68 @@ type MonitorErrorCount struct {
 	Timestamp *string `json:"timestamp,omitempty"`
 }
 
-// MonitorErrorCounts A collection of Monitor Errors
-type MonitorErrorCounts = []MonitorErrorCount
+// MonitorErrorResponse Response containing monitor errors and
+type MonitorErrorResponse struct {
+	// Entries Returned values
+	Entries *[]MonitorErrorCount `json:"entries,omitempty"`
 
-// MonitorErrorsPage A page of monitor errors
-type MonitorErrorsPage struct {
-	// Entries A collection of Monitor Errors
-	Entries *MonitorErrorCounts `json:"entries,omitempty"`
+	// Metadata Provides cursor data for an API request
+	Metadata *PagingMetadata `json:"metadata,omitempty"`
+}
 
-	// Metadata Defines page metadata
-	Metadata *PageMetadata `json:"metadata,omitempty"`
+// MonitorInstances A list of monitors + their instances
+type MonitorInstances = []struct {
+	// Instances The unique instances for that monitor
+	Instances *[]string `json:"instances,omitempty"`
+
+	// MonitorLogicalName The logical name of the monitor
+	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
 }
 
 // MonitorList A list of monitors
-type MonitorList = []MonitorListEntry
-
-// MonitorListEntry A single monitor in the list
-type MonitorListEntry struct {
-	// LogicalName the logical name of the monitor
+type MonitorList = []struct {
+	// LogicalName The logical name of the monitor
 	LogicalName *string `json:"logical_name,omitempty"`
 
-	// Name the name of the monitor
+	// Name The name of the monitor
 	Name *string `json:"name,omitempty"`
 }
 
-// MonitorStatus A status for a single monitor
-type MonitorStatus struct {
+// MonitorStatuses A collection of monitor statuses
+type MonitorStatuses = []struct {
 	// LastChecked The last time this monitor was checked by Metrist
 	LastChecked *string `json:"last_checked,omitempty"`
 
 	// MonitorLogicalName Logical name of monitor
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
 
-	// State The state of the monitor up, degraded, issues, down
-	State *string `json:"state,omitempty"`
+	// State The state of the monitor up, degraded, issues, down, maintenance
+	State *MonitorStatusesState `json:"state,omitempty"`
 }
 
-// MonitorStatuses A collection of monitor statuses
-type MonitorStatuses = []MonitorStatus
+// MonitorStatusesState The state of the monitor up, degraded, issues, down, maintenance
+type MonitorStatusesState string
 
 // MonitorTelemetry A collection of Telemetry Entries
-type MonitorTelemetry = []TelemetryEntryAverage
+type MonitorTelemetry = []struct {
+	// Check Check that generated the telemetry
+	Check *string `json:"check,omitempty"`
 
-// PageMetadata Defines page metadata
-type PageMetadata struct {
+	// Instance Instance that generated the telemetry
+	Instance *string `json:"instance,omitempty"`
+
+	// MonitorLogicalName Logical name of monitor
+	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
+
+	// Timestamp ime when the error was generated
+	Timestamp *string `json:"timestamp,omitempty"`
+
+	// Value The average time this check took to execute in milliseconds
+	Value *float32 `json:"value,omitempty"`
+}
+
+// PagingMetadata Provides cursor data for an API request
+type PagingMetadata struct {
 	// CursorAfter an opaque cursor representing the last row of the current page
 	CursorAfter *string `json:"cursor_after,omitempty"`
 
@@ -137,22 +172,13 @@ type PageMetadata struct {
 	CursorBefore *string `json:"cursor_before,omitempty"`
 }
 
-// StatusPageChanges A collection of Status Page Component Changes
-type StatusPageChanges = []StatusPageComponentChange
-
-// StatusPageChangesPage A page of status page changes
-type StatusPageChangesPage struct {
-	// Entries A collection of Status Page Component Changes
-	Entries *StatusPageChanges `json:"entries,omitempty"`
-
-	// Metadata Defines page metadata
-	Metadata *PageMetadata `json:"metadata,omitempty"`
-}
-
 // StatusPageComponentChange A single change for a single status page component
 type StatusPageComponentChange struct {
 	// Component Component name that was changed
 	Component *string `json:"component,omitempty"`
+
+	// Id Unique Metrist id for the change
+	Id *string `json:"id,omitempty"`
 
 	// MonitorLogicalName Logical name of monitor
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
@@ -164,31 +190,30 @@ type StatusPageComponentChange struct {
 	Timestamp *string `json:"timestamp,omitempty"`
 }
 
-// TelemetryEntryAverage An average of telemetry values within a certain period
-type TelemetryEntryAverage struct {
-	// Check Check that generated the error
-	Check *string `json:"check,omitempty"`
+// StatusPageComponentChanges A collection of Status Page Component Changes
+type StatusPageComponentChanges struct {
+	// Entries Returned values
+	Entries *[]StatusPageComponentChange `json:"entries,omitempty"`
 
-	// Instance Instance that generated the error
-	Instance *string `json:"instance,omitempty"`
+	// Metadata Provides cursor data for an API request
+	Metadata *PagingMetadata `json:"metadata,omitempty"`
+}
 
-	// MonitorLogicalName Logical name of monitor
-	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
+// BackendWebMonitorCheckControllerGetParams defines parameters for BackendWebMonitorCheckControllerGet.
+type BackendWebMonitorCheckControllerGetParams struct {
+	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
+	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
 
-	// Timestamp Time when the error was generated
-	Timestamp *string `json:"timestamp,omitempty"`
-
-	// Value The average time this check took to execute in milliseconds
-	Value *float32 `json:"value,omitempty"`
+	// M One or more monitors to get the errors for.
+	// These should be the logical names for the monitors.
+	// If omitted all monitors on the account are included
+	M []string `form:"m[]" json:"m[]"`
 }
 
 // BackendWebMonitorErrorControllerGetParams defines parameters for BackendWebMonitorErrorControllerGet.
 type BackendWebMonitorErrorControllerGetParams struct {
-	// From Start of datetime range in ISO_8601 format
-	From string `form:"from" json:"from"`
-
-	// To End of datetime range in ISO_8601 format
-	To *string `form:"to,omitempty" json:"to,omitempty"`
+	From time.Time `form:"from" json:"from"`
+	To   time.Time `form:"to" json:"to"`
 
 	// CursorAfter Fetch the records after this cursor.
 	CursorAfter *string `form:"cursor_after,omitempty" json:"cursor_after,omitempty"`
@@ -202,15 +227,32 @@ type BackendWebMonitorErrorControllerGetParams struct {
 	// OnlyShared Whether to only return SHARED data in returned results. If omitted, the account specific data is returned
 	OnlyShared *bool `form:"only_shared,omitempty" json:"only_shared,omitempty"`
 
+	// C The checks to limit the query to
+	C *[]string `form:"c[],omitempty" json:"c[],omitempty"`
+
+	// I The instances to limit the query to
+	I *[]string `form:"i[],omitempty" json:"i[],omitempty"`
+
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
 	// If omitted all monitors on the account are included
-	M *[]string `form:"m[],omitempty" json:"m[],omitempty"`
+	M []string `form:"m[]" json:"m[]"`
+}
+
+// BackendWebMonitorInstanceControllerGetParams defines parameters for BackendWebMonitorInstanceControllerGet.
+type BackendWebMonitorInstanceControllerGetParams struct {
+	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
+	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
+
+	// M One or more monitors to get the errors for.
+	// These should be the logical names for the monitors.
+	// If omitted all monitors on the account are included
+	M []string `form:"m[]" json:"m[]"`
 }
 
 // BackendWebMonitorStatusControllerGetParams defines parameters for BackendWebMonitorStatusControllerGet.
 type BackendWebMonitorStatusControllerGetParams struct {
-	// M One or more monitors to get the status for.
+	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
 	// If omitted all monitors on the account are included
 	M []string `form:"m[]" json:"m[]"`
@@ -218,11 +260,8 @@ type BackendWebMonitorStatusControllerGetParams struct {
 
 // BackendWebStatusPageChangeControllerGetParams defines parameters for BackendWebStatusPageChangeControllerGet.
 type BackendWebStatusPageChangeControllerGetParams struct {
-	// From Start of datetime range in ISO_8601 format
-	From string `form:"from" json:"from"`
-
-	// To End of datetime range in ISO_8601 format
-	To *string `form:"to,omitempty" json:"to,omitempty"`
+	From time.Time  `form:"from" json:"from"`
+	To   *time.Time `form:"to,omitempty" json:"to,omitempty"`
 
 	// CursorAfter Fetch the records after this cursor.
 	CursorAfter *string `form:"cursor_after,omitempty" json:"cursor_after,omitempty"`
@@ -236,24 +275,27 @@ type BackendWebStatusPageChangeControllerGetParams struct {
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
 	// If omitted all monitors on the account are included
-	M *[]string `form:"m[],omitempty" json:"m[],omitempty"`
+	M []string `form:"m[]" json:"m[]"`
 }
 
 // BackendWebMonitorTelemetryControllerGetParams defines parameters for BackendWebMonitorTelemetryControllerGet.
 type BackendWebMonitorTelemetryControllerGetParams struct {
-	// From Start of datetime range in ISO_8601 format
-	From string `form:"from" json:"from"`
-
-	// To End of datetime range in ISO_8601 format
-	To *string `form:"to,omitempty" json:"to,omitempty"`
+	From time.Time `form:"from" json:"from"`
+	To   time.Time `form:"to" json:"to"`
 
 	// IncludeShared Whether to include SHARED data in returned results. If omitted SHARED data will not be included
 	IncludeShared *bool `form:"include_shared,omitempty" json:"include_shared,omitempty"`
 
+	// C The checks to limit the query to
+	C *[]string `form:"c[],omitempty" json:"c[],omitempty"`
+
+	// I The instances to limit the query to
+	I *[]string `form:"i[],omitempty" json:"i[],omitempty"`
+
 	// M One or more monitors to get the errors for.
 	// These should be the logical names for the monitors.
 	// If omitted all monitors on the account are included
-	M *[]string `form:"m[],omitempty" json:"m[],omitempty"`
+	M []string `form:"m[]" json:"m[]"`
 }
 
 // BackendWebMonitorConfigControllerPostJSONRequestBody defines body for BackendWebMonitorConfigControllerPost for application/json ContentType.
@@ -332,6 +374,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// BackendWebMonitorCheckControllerGet request
+	BackendWebMonitorCheckControllerGet(ctx context.Context, params *BackendWebMonitorCheckControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BackendWebMonitorConfigControllerPost request with any body
 	BackendWebMonitorConfigControllerPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -342,6 +387,9 @@ type ClientInterface interface {
 
 	// BackendWebMonitorErrorControllerGet request
 	BackendWebMonitorErrorControllerGet(ctx context.Context, params *BackendWebMonitorErrorControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// BackendWebMonitorInstanceControllerGet request
+	BackendWebMonitorInstanceControllerGet(ctx context.Context, params *BackendWebMonitorInstanceControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// BackendWebMonitorListControllerGet request
 	BackendWebMonitorListControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -357,6 +405,18 @@ type ClientInterface interface {
 
 	// BackendWebVerifyAuthControllerGet request
 	BackendWebVerifyAuthControllerGet(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) BackendWebMonitorCheckControllerGet(ctx context.Context, params *BackendWebMonitorCheckControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBackendWebMonitorCheckControllerGetRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) BackendWebMonitorConfigControllerPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -397,6 +457,18 @@ func (c *Client) BackendWebMonitorConfigControllerDelete(ctx context.Context, mo
 
 func (c *Client) BackendWebMonitorErrorControllerGet(ctx context.Context, params *BackendWebMonitorErrorControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBackendWebMonitorErrorControllerGetRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BackendWebMonitorInstanceControllerGet(ctx context.Context, params *BackendWebMonitorInstanceControllerGetParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBackendWebMonitorInstanceControllerGetRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -467,6 +539,65 @@ func (c *Client) BackendWebVerifyAuthControllerGet(ctx context.Context, reqEdito
 	return c.Client.Do(req)
 }
 
+// NewBackendWebMonitorCheckControllerGetRequest generates requests for BackendWebMonitorCheckControllerGet
+func NewBackendWebMonitorCheckControllerGetRequest(server string, params *BackendWebMonitorCheckControllerGetParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v0/monitor-check")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.IncludeShared != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_shared", runtime.ParamLocationQuery, *params.IncludeShared); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewBackendWebMonitorConfigControllerPostRequest calls the generic BackendWebMonitorConfigControllerPost builder with application/json body
 func NewBackendWebMonitorConfigControllerPostRequest(server string, body BackendWebMonitorConfigControllerPostJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -487,7 +618,7 @@ func NewBackendWebMonitorConfigControllerPostRequestWithBody(server string, cont
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-config")
+	operationPath := fmt.Sprintf("/api/v0/monitor-config")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -530,7 +661,7 @@ func NewBackendWebMonitorConfigControllerDeleteRequest(server string, monitor st
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-config/%s/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/api/v0/monitor-config/%s/%s", pathParam0, pathParam1)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -557,7 +688,7 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-error")
+	operationPath := fmt.Sprintf("/api/v0/monitor-error")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -581,20 +712,16 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 		}
 	}
 
-	if params.To != nil {
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
 			}
 		}
-
 	}
 
 	if params.CursorAfter != nil {
@@ -661,9 +788,9 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 
 	}
 
-	if params.M != nil {
+	if params.C != nil {
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, *params.M); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "c[]", runtime.ParamLocationQuery, *params.C); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -675,6 +802,93 @@ func NewBackendWebMonitorErrorControllerGetRequest(server string, params *Backen
 			}
 		}
 
+	}
+
+	if params.I != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "i[]", runtime.ParamLocationQuery, *params.I); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewBackendWebMonitorInstanceControllerGetRequest generates requests for BackendWebMonitorInstanceControllerGet
+func NewBackendWebMonitorInstanceControllerGetRequest(server string, params *BackendWebMonitorInstanceControllerGetParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v0/monitor-instance")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.IncludeShared != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "include_shared", runtime.ParamLocationQuery, *params.IncludeShared); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
@@ -696,7 +910,7 @@ func NewBackendWebMonitorListControllerGetRequest(server string) (*http.Request,
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-list")
+	operationPath := fmt.Sprintf("/api/v0/monitor-list")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -723,7 +937,7 @@ func NewBackendWebMonitorStatusControllerGetRequest(server string, params *Backe
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-status")
+	operationPath := fmt.Sprintf("/api/v0/monitor-status")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -766,7 +980,7 @@ func NewBackendWebStatusPageChangeControllerGetRequest(server string, params *Ba
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-status-page-change")
+	operationPath := fmt.Sprintf("/api/v0/monitor-status-page-change")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -854,20 +1068,16 @@ func NewBackendWebStatusPageChangeControllerGetRequest(server string, params *Ba
 
 	}
 
-	if params.M != nil {
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, *params.M); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
 			}
 		}
-
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
@@ -889,7 +1099,7 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/monitor-telemetry")
+	operationPath := fmt.Sprintf("/api/v0/monitor-telemetry")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -913,20 +1123,16 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 		}
 	}
 
-	if params.To != nil {
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, *params.To); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "to", runtime.ParamLocationQuery, params.To); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
 			}
 		}
-
 	}
 
 	if params.IncludeShared != nil {
@@ -945,9 +1151,9 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 
 	}
 
-	if params.M != nil {
+	if params.C != nil {
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, *params.M); err != nil {
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "c[]", runtime.ParamLocationQuery, *params.C); err != nil {
 			return nil, err
 		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 			return nil, err
@@ -959,6 +1165,34 @@ func NewBackendWebMonitorTelemetryControllerGetRequest(server string, params *Ba
 			}
 		}
 
+	}
+
+	if params.I != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "i[]", runtime.ParamLocationQuery, *params.I); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if queryFrag, err := runtime.StyleParamWithLocation("form", true, "m[]", runtime.ParamLocationQuery, params.M); err != nil {
+		return nil, err
+	} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+		return nil, err
+	} else {
+		for k, v := range parsed {
+			for _, v2 := range v {
+				queryValues.Add(k, v2)
+			}
+		}
 	}
 
 	queryURL.RawQuery = queryValues.Encode()
@@ -980,7 +1214,7 @@ func NewBackendWebVerifyAuthControllerGetRequest(server string) (*http.Request, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/verify-auth")
+	operationPath := fmt.Sprintf("/api/v0/verify-auth")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1041,6 +1275,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// BackendWebMonitorCheckControllerGet request
+	BackendWebMonitorCheckControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorCheckControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorCheckControllerGetResponse, error)
+
 	// BackendWebMonitorConfigControllerPost request with any body
 	BackendWebMonitorConfigControllerPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BackendWebMonitorConfigControllerPostResponse, error)
 
@@ -1051,6 +1288,9 @@ type ClientWithResponsesInterface interface {
 
 	// BackendWebMonitorErrorControllerGet request
 	BackendWebMonitorErrorControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorErrorControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorErrorControllerGetResponse, error)
+
+	// BackendWebMonitorInstanceControllerGet request
+	BackendWebMonitorInstanceControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorInstanceControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorInstanceControllerGetResponse, error)
 
 	// BackendWebMonitorListControllerGet request
 	BackendWebMonitorListControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebMonitorListControllerGetResponse, error)
@@ -1066,6 +1306,28 @@ type ClientWithResponsesInterface interface {
 
 	// BackendWebVerifyAuthControllerGet request
 	BackendWebVerifyAuthControllerGetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*BackendWebVerifyAuthControllerGetResponse, error)
+}
+
+type BackendWebMonitorCheckControllerGetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *MonitorChecks
+}
+
+// Status returns HTTPResponse.Status
+func (r BackendWebMonitorCheckControllerGetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BackendWebMonitorCheckControllerGetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type BackendWebMonitorConfigControllerPostResponse struct {
@@ -1113,7 +1375,7 @@ func (r BackendWebMonitorConfigControllerDeleteResponse) StatusCode() int {
 type BackendWebMonitorErrorControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorErrorsPage
+	JSON200      *MonitorErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1126,6 +1388,28 @@ func (r BackendWebMonitorErrorControllerGetResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r BackendWebMonitorErrorControllerGetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type BackendWebMonitorInstanceControllerGetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *MonitorInstances
+}
+
+// Status returns HTTPResponse.Status
+func (r BackendWebMonitorInstanceControllerGetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BackendWebMonitorInstanceControllerGetResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1179,7 +1463,7 @@ func (r BackendWebMonitorStatusControllerGetResponse) StatusCode() int {
 type BackendWebStatusPageChangeControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *StatusPageChangesPage
+	JSON200      *StatusPageComponentChanges
 }
 
 // Status returns HTTPResponse.Status
@@ -1241,6 +1525,15 @@ func (r BackendWebVerifyAuthControllerGetResponse) StatusCode() int {
 	return 0
 }
 
+// BackendWebMonitorCheckControllerGetWithResponse request returning *BackendWebMonitorCheckControllerGetResponse
+func (c *ClientWithResponses) BackendWebMonitorCheckControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorCheckControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorCheckControllerGetResponse, error) {
+	rsp, err := c.BackendWebMonitorCheckControllerGet(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBackendWebMonitorCheckControllerGetResponse(rsp)
+}
+
 // BackendWebMonitorConfigControllerPostWithBodyWithResponse request with arbitrary body returning *BackendWebMonitorConfigControllerPostResponse
 func (c *ClientWithResponses) BackendWebMonitorConfigControllerPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BackendWebMonitorConfigControllerPostResponse, error) {
 	rsp, err := c.BackendWebMonitorConfigControllerPostWithBody(ctx, contentType, body, reqEditors...)
@@ -1274,6 +1567,15 @@ func (c *ClientWithResponses) BackendWebMonitorErrorControllerGetWithResponse(ct
 		return nil, err
 	}
 	return ParseBackendWebMonitorErrorControllerGetResponse(rsp)
+}
+
+// BackendWebMonitorInstanceControllerGetWithResponse request returning *BackendWebMonitorInstanceControllerGetResponse
+func (c *ClientWithResponses) BackendWebMonitorInstanceControllerGetWithResponse(ctx context.Context, params *BackendWebMonitorInstanceControllerGetParams, reqEditors ...RequestEditorFn) (*BackendWebMonitorInstanceControllerGetResponse, error) {
+	rsp, err := c.BackendWebMonitorInstanceControllerGet(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBackendWebMonitorInstanceControllerGetResponse(rsp)
 }
 
 // BackendWebMonitorListControllerGetWithResponse request returning *BackendWebMonitorListControllerGetResponse
@@ -1319,6 +1621,32 @@ func (c *ClientWithResponses) BackendWebVerifyAuthControllerGetWithResponse(ctx 
 		return nil, err
 	}
 	return ParseBackendWebVerifyAuthControllerGetResponse(rsp)
+}
+
+// ParseBackendWebMonitorCheckControllerGetResponse parses an HTTP response from a BackendWebMonitorCheckControllerGetWithResponse call
+func ParseBackendWebMonitorCheckControllerGetResponse(rsp *http.Response) (*BackendWebMonitorCheckControllerGetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BackendWebMonitorCheckControllerGetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MonitorChecks
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseBackendWebMonitorConfigControllerPostResponse parses an HTTP response from a BackendWebMonitorConfigControllerPostWithResponse call
@@ -1368,7 +1696,33 @@ func ParseBackendWebMonitorErrorControllerGetResponse(rsp *http.Response) (*Back
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorErrorsPage
+		var dest MonitorErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseBackendWebMonitorInstanceControllerGetResponse parses an HTTP response from a BackendWebMonitorInstanceControllerGetWithResponse call
+func ParseBackendWebMonitorInstanceControllerGetResponse(rsp *http.Response) (*BackendWebMonitorInstanceControllerGetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BackendWebMonitorInstanceControllerGetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MonitorInstances
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1446,7 +1800,7 @@ func ParseBackendWebStatusPageChangeControllerGetResponse(rsp *http.Response) (*
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest StatusPageChangesPage
+		var dest StatusPageComponentChanges
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -87,15 +87,15 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorStatusPageChanges"}`)
 	tests := []struct {
-		page *internal.StatusPageChangesPage
+		page *internal.StatusPageComponentChanges
 		name string
 		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			page: &internal.StatusPageChangesPage{
-				Metadata: &internal.PageMetadata{},
-				Entries: &internal.StatusPageChanges{{
+			page: &internal.StatusPageComponentChanges{
+				Metadata: &internal.PagingMetadata{},
+				Entries: &[]internal.StatusPageComponentChange{{
 					Component:          ptr("component1"),
 					MonitorLogicalName: ptr("monitor"),
 					Status:             ptr("up"),
@@ -113,9 +113,9 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 		},
 		{
 			name: "Returns an empty frame if no response",
-			page: &internal.StatusPageChangesPage{
-				Metadata: &internal.PageMetadata{},
-				Entries:  &internal.StatusPageChanges{},
+			page: &internal.StatusPageComponentChanges{
+				Metadata: &internal.PagingMetadata{},
+				Entries:  &[]internal.StatusPageComponentChange{},
 			},
 			want: data.Frames{},
 		},
@@ -162,21 +162,21 @@ func TestQueryMonitorErrors(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorErrors"}`)
 	tests := []struct {
-		page *internal.MonitorErrorsPage
+		page *internal.MonitorErrorResponse
 		name string
 		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			page: &internal.MonitorErrorsPage{
-				Entries: &internal.MonitorErrorCounts{{
+			page: &internal.MonitorErrorResponse{
+				Entries: &[]internal.MonitorErrorCount{{
 					Check:              ptr("check"),
 					Count:              ptr(1),
 					Instance:           ptr("us-east-1"),
 					MonitorLogicalName: ptr("monitor"),
 					Timestamp:          ptr("2022-12-07T18:28:06.485416Z"),
 				}},
-				Metadata: &internal.PageMetadata{},
+				Metadata: &internal.PagingMetadata{},
 			},
 			want: data.Frames{{
 				Name: DataFrameMonitorErrors,
@@ -189,9 +189,9 @@ func TestQueryMonitorErrors(t *testing.T) {
 		},
 		{
 			name: "Returns an empty frame if no response",
-			page: &internal.MonitorErrorsPage{
-				Entries:  &internal.MonitorErrorCounts{},
-				Metadata: &internal.PageMetadata{}},
+			page: &internal.MonitorErrorResponse{
+				Entries:  &[]internal.MonitorErrorCount{},
+				Metadata: &internal.PagingMetadata{}},
 			want: data.Frames{},
 		},
 	}

@@ -11,3 +11,5 @@ services:
       - 3000:3000/tcp
     volumes:
       - ./dist:/var/lib/grafana/plugins/metrist-datasource
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

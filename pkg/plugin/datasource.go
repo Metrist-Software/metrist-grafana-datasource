@@ -2,10 +2,12 @@ package plugin
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
@@ -23,10 +25,11 @@ var (
 )
 
 var (
-	errRemoteRequest          = errors.New("remote request error")
-	errRemoteResponse         = errors.New("remote response error")
-	errMissingApiKey          = errors.New("missing api key")
-	errTimerangeLimitExceeded = errors.New("time range cannot exceed 90 days")
+	errRemoteRequest                   = errors.New("remote request error")
+	errRemoteResponse                  = errors.New("remote response error")
+	errMissingApiKey                   = errors.New("missing api key")
+	errTimerangeLimitExceeded          = errors.New("time range cannot exceed 90 days")
+	errTelemetryRequestedOutsideBounds = errors.New("telemetry is only available for the past 90 days")
 )
 
 const (
@@ -39,9 +42,17 @@ func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.In
 		log.DefaultLogger.Debug("request url: %s, header %s", req.URL.String(), req.Header)
 		return nil
 	}
+
 	opts, err := settings.HTTPClientOptions()
 	if err != nil {
 		return nil, fmt.Errorf("http client options: %w", err)
+	}
+
+	opts.ConfigureTLSConfig = func(opts httpclient.Options, tlsConfig *tls.Config) {
+		if internal.Environment == "local" {
+			// We skip TLS verification if running against local as self signed certificates may be being used
+			tlsConfig.InsecureSkipVerify = true
+		}
 	}
 
 	cl, err := httpclient.New(opts)
@@ -162,11 +173,40 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 
 // CallResource implements backend.CallResourceHandler
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	// Parameters from getResource come in as query string parameters in the URL property
+	log.DefaultLogger.Debug("url %s", req.URL)
+	u, err := url.Parse(req.URL)
+	if err != nil {
+		return err
+	}
+
+	queryStringValues := u.Query()
+
 	switch req.Path {
 	case "Monitors":
 		response, err := ResourceMonitorList(ctx, d.openApiClient)
 		if err != nil {
 			log.DefaultLogger.Error("resource monitor list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	case "Checks":
+		response, err := ResourceCheckList(ctx, d.openApiClient, queryStringValues["monitors"], queryStringValues.Get("includeShared") == "true")
+		if err != nil {
+			log.DefaultLogger.Error("checks list error: %w", err)
+			return sender.Send(&backend.CallResourceResponse{
+				Status: http.StatusInternalServerError,
+				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),
+			})
+		}
+		return sender.Send(&response)
+	case "Instances":
+		response, err := ResourceInstanceList(ctx, d.openApiClient, queryStringValues["monitors"], queryStringValues.Get("includeShared") == "true")
+		if err != nil {
+			log.DefaultLogger.Error("instances list error: %w", err)
 			return sender.Send(&backend.CallResourceResponse{
 				Status: http.StatusInternalServerError,
 				Body:   []byte(fmt.Sprintf(`{"message": "%s"}`, "internal server error")),

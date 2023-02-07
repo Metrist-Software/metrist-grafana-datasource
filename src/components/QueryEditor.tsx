@@ -1,7 +1,7 @@
 import defaults from 'lodash/defaults';
 
 import React, { ChangeEvent, useEffect, useState } from 'react';
-import { InlineField, InlineFieldRow, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
+import { InlineField, InlineFieldRow, InlineLabel, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
@@ -11,8 +11,10 @@ type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 export const QueryEditor = (props: Props) => {
 
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
+  const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
+  const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
   const [buildHash, setBuildHash] = useState<string>();
-  
+
   useEffect(() => {
     const dataFetch = async () => {
       try {
@@ -30,21 +32,57 @@ export const QueryEditor = (props: Props) => {
     dataFetch();
   }, [props.datasource]);
 
+  // If query.monitors or query.includeShared change, then reload the checks and instances list
+  useEffect(() => {
+    const dataFetch = async () => {
+      try {
+        if (props.query.monitors != null) {
+          const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors, includeShared: props.query.includeShared });
+          setChecks(checks)
+    
+          const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors, includeShared: props.query.includeShared });
+          setInstances(instances)
+        }
+      } catch (e) {
+        console.error(e)
+        setChecks([]);
+        setInstances([]);
+      }
+    };
+
+    dataFetch();
+  }, [props.datasource, props.query.monitors, props.query.includeShared]);
+
   const queryTypeChange = (val: SelectableValue<string>) => {
     const { onChange, query, onRunQuery } = props;
     onChange({ ...query, queryType: val.value as string });
     onRunQuery();
   };
 
-  const onMonitorsChange = (vals: Array<SelectableValue<string>>) => {
+  const onMonitorsChange = async (vals: Array<SelectableValue<string>>) => {  
     const { onChange, query, onRunQuery } = props;
-    onChange({ ...query, monitors: vals.map(v => v.value as string) });
+
+    const monitors = vals.map(v => v.value as string)
+
+    onChange({ ...query, monitors: monitors });
     onRunQuery();
   };
 
   const onSharedDataChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query, onRunQuery } = props;
     onChange({ ...query, includeShared: event.currentTarget.checked });
+    onRunQuery();
+  };
+
+  const onChecksChange = (vals: Array<SelectableValue<string>>) => {
+    const { onChange, query, onRunQuery } = props;
+    onChange({ ...query, checks: vals.map(v => v.value as string) });
+    onRunQuery();
+  };
+
+  const onInstancesChange = (vals: Array<SelectableValue<string>>) => {
+    const { onChange, query, onRunQuery } = props;
+    onChange({ ...query, instances: vals.map(v => v.value as string) });
     onRunQuery();
   };
 
@@ -61,6 +99,41 @@ export const QueryEditor = (props: Props) => {
             />
           </InlineField>
         )
+      case 'GetMonitorStatusPageChanges':
+      case 'GetMonitorStatus':
+      default:
+        return <></>
+    }
+  }
+
+  const additionalFormRows = (queryType: string | undefined) => {
+    const query = defaults(props.query, defaultQuery);
+    switch (queryType) {
+      case 'GetMonitorErrors':
+      case 'GetMonitorTelemetry':
+        return (
+            <div>
+            <InlineLabel>Additional Filters (Optional)</InlineLabel>
+            <InlineFieldRow>            
+            <InlineField label="Checks" labelWidth={14}>
+              <MultiSelect
+                options={checkSelect}
+                width={32}
+                value={query.checks}
+                onChange={onChecksChange}
+              />
+            </InlineField>
+            <InlineField label="Instances" labelWidth={14}>
+              <MultiSelect
+                options={instanceSelect}
+                width={32}
+                value={query.instances}
+                onChange={onInstancesChange}
+              />
+            </InlineField>
+          </InlineFieldRow>
+          </div>
+          )
       case 'GetMonitorStatusPageChanges':
       case 'GetMonitorStatus':
       default:
@@ -112,6 +185,7 @@ export const QueryEditor = (props: Props) => {
         </InlineField>
         {additionalFormFields(queryType)}
       </InlineFieldRow>
+      {additionalFormRows(queryType)}
       <div><sub>Query Version: {buildHash}</sub></div>
     </div>
   );

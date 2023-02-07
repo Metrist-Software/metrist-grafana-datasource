@@ -13,7 +13,9 @@
     "e2e": "cypress install && grafana-e2e run",
     "e2e:update": "cypress install && grafana-e2e run --update-screenshots",
     "server": "docker-compose up --build",
-    "server:with-plugin": "mage -v && npm run server"
+    "server:with-plugin": "mage -v && npm run server",
+    "server:with-plugin-local": "mage -v buildLocal && npm run server",
+    "server:with-plugin-prod": "mage -v buildProd && npm run server"
   },
   "author": "Metrist",
   "license": "Apache-2.0",
