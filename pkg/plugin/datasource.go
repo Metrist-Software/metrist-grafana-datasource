@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/Metrist-Software/metrist-grafana-datasource/pkg/internal"
@@ -175,15 +174,13 @@ func (d *Datasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRe
 // CallResource implements backend.CallResourceHandler
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	// Parameters from getResource come in as query string parameters in the URL property
-	var queryStringValues url.Values
-	var er error
-	if strings.Index(req.URL, "?") > 0 {
-		queryStringValues, er = url.ParseQuery(strings.Split(req.URL, "?")[1])
+	log.DefaultLogger.Debug("url %s", req.URL)
+	u, err := url.Parse(req.URL)
+	if err != nil {
+		return err
 	}
 
-	if er != nil {
-		return er
-	}
+	queryStringValues := u.Query()
 
 	switch req.Path {
 	case "Monitors":
@@ -197,7 +194,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		}
 		return sender.Send(&response)
 	case "Checks":
-		response, err := ResourceCheckList(ctx, d.openApiClient, strings.Split(queryStringValues["monitors"][0], ","), queryStringValues["includeShared"][0] == "true")
+		response, err := ResourceCheckList(ctx, d.openApiClient, queryStringValues["monitors"], queryStringValues.Get("includeShared") == "true")
 		if err != nil {
 			log.DefaultLogger.Error("checks list error: %w", err)
 			return sender.Send(&backend.CallResourceResponse{
@@ -207,7 +204,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		}
 		return sender.Send(&response)
 	case "Instances":
-		response, err := ResourceInstanceList(ctx, d.openApiClient, strings.Split(queryStringValues["monitors"][0], ","), queryStringValues["includeShared"][0] == "true")
+		response, err := ResourceInstanceList(ctx, d.openApiClient, queryStringValues["monitors"], queryStringValues.Get("includeShared") == "true")
 		if err != nil {
 			log.DefaultLogger.Error("instances list error: %w", err)
 			return sender.Send(&backend.CallResourceResponse{

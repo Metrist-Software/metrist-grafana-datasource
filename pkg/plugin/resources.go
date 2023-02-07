@@ -93,12 +93,9 @@ func ResourceInstanceList(ctx context.Context, client internal.ClientWithRespons
 
 	all_instances := make([]string, 0)
 	for _, item := range instanceList {
-		for _, instance := range *item.Instances {
-			if !slices.Contains(all_instances, instance) {
-				all_instances = append(all_instances, instance)
-			}
-		}
+		all_instances = append(all_instances, *item.Instances...)
 	}
+	all_instances = uniqStrings(all_instances)
 
 	slices.Sort(all_instances)
 

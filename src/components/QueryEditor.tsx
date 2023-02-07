@@ -37,10 +37,10 @@ export const QueryEditor = (props: Props) => {
     const dataFetch = async () => {
       try {
         if (props.query.monitors != null) {
-          const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+          const checks = await props.datasource.getResource('Checks', { monitors: props.query.monitors, includeShared: props.query.includeShared });
           setChecks(checks)
     
-          const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors.join(","), includeShared: props.query.includeShared });
+          const instances = await props.datasource.getResource('Instances', { monitors: props.query.monitors, includeShared: props.query.includeShared });
           setInstances(instances)
         }
       } catch (e) {
