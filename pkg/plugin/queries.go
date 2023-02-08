@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -179,31 +180,68 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 	}
 
 	responses := *resp.JSON200
-	frame := &data.Frame{
-		Name: DataFrameMonitorTelemetry,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []float32{}),
-			data.NewField("instance", nil, []string{}),
-			data.NewField("check", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
+
+	type Key struct {
+		instance, check, monitor string
 	}
 
-	for _, te := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
+	type Record struct {
+		time  time.Time
+		value float32
+	}
+
+	m := map[Key][]Record{}
+	for _, r := range responses {
+		timestamp, err := time.Parse(time.RFC3339, *r.Timestamp)
 		if err != nil {
 			log.DefaultLogger.Error("error while parsing telemetry time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
+		key := Key{*r.Instance, *r.Check, *r.MonitorLogicalName}
+		m[key] = append(m[key], Record{timestamp, *r.Value})
 	}
 
-	f, err := data.LongToWide(frame, nil)
-	if err != nil {
-		return backend.DataResponse{}, err
+	var frames = make([]*data.Frame, 0)
+	for key, values := range m {
+		frame := data.NewFrame(fmt.Sprintf("%s-%s-%s", key.check, key.instance, key.monitor),
+			data.NewField("time", nil, make([]time.Time, len(values))),
+			data.NewField("",
+				data.Labels{"check": key.check, "instance": key.instance, "monitor": key.monitor},
+				make([]float32, len(values)),
+			),
+		)
+		for pIdx, record := range values {
+			frame.Set(0, pIdx, record.time)
+			frame.Set(1, pIdx, record.value)
+		}
+		frames = append(frames, frame)
 	}
-	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
+
+	// frame := &data.Frame{
+	// 	Name: DataFrameMonitorTelemetry,
+	// 	Fields: []*data.Field{
+	// 		data.NewField("time", nil, []time.Time{}),
+	// 		data.NewField("", nil, []float32{}),
+	// 		data.NewField("instance", nil, []string{}),
+	// 		data.NewField("check", nil, []string{}),
+	// 		data.NewField("monitor", nil, []string{}),
+	// 	},
+	// }
+
+	// for _, te := range responses {
+	// 	timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
+	// 	if err != nil {
+	// 		log.DefaultLogger.Error("error while parsing telemetry time %w", err)
+	// 		continue
+	// 	}
+	// 	frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
+	// }
+
+	// f, err := data.LongToWide(frame, nil)
+	// if err != nil {
+	// 	return backend.DataResponse{}, err
+	// }
+	return backend.DataResponse{Frames: frames}, nil
 
 }
 
