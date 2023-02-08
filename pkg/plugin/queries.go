@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -179,16 +180,10 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 	}
 
 	responses := *resp.JSON200
-	frame := &data.Frame{
-		Name: DataFrameMonitorTelemetry,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []float32{}),
-			data.NewField("instance", nil, []string{}),
-			data.NewField("check", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
-	}
+
+	frameMap := make(map[string]*data.Frame)
+
+	frames := make([]*data.Frame, 0)
 
 	for _, te := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
@@ -196,15 +191,47 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 			log.DefaultLogger.Error("error while parsing telemetry time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
+
+		key := fmt.Sprintf("%s-%s-%s", *te.Instance, *te.Check, *te.MonitorLogicalName)
+		frameToAppendTo, ok := frameMap[key]
+		if !ok {
+			frameToAppendTo = &data.Frame{
+				Name: key,
+				Fields: []*data.Field{
+					data.NewField("time", nil, []time.Time{}),
+					data.NewField("value", nil, []float32{}),
+					data.NewField("instance", nil, []string{}),
+					data.NewField("check", nil, []string{}),
+					data.NewField("monitor", nil, []string{}),
+				},
+				Meta: &data.FrameMeta{
+					Type:                   data.FrameTypeNumericMulti,
+					PreferredVisualization: data.VisTypeGraph,
+				},
+			}
+
+			frameMap[key] = frameToAppendTo
+		}
+
+		frameToAppendTo.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
 	}
 
-	f, err := data.LongToWide(frame, nil)
-	if err != nil {
-		return backend.DataResponse{}, err
+	for _, frame := range frameMap {
+		frames = append(frames, frame)
 	}
-	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
 
+	log.DefaultLogger.Info("Length of frames at this point is %d", len(frames))
+
+	for _, frame := range frameMap {
+		frame2 := *frame
+		new_meta := *frame2.Meta
+		new_meta.PreferredVisualization = data.VisTypeTable
+		frame2.Meta = &new_meta
+		frames = append(frames, &frame2)
+	}
+	log.DefaultLogger.Info("Length of frames after graph is %d", len(frames))
+
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 // QueryMonitorStatusPageChanges queries `/status-page-changes`
