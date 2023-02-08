@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -203,44 +202,48 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 	var frames = make([]*data.Frame, 0)
 	for key, values := range m {
-		frame := data.NewFrame(fmt.Sprintf("%s-%s-%s", key.check, key.instance, key.monitor),
-			data.NewField("time", nil, make([]time.Time, len(values))),
-			data.NewField("",
-				data.Labels{"check": key.check, "instance": key.instance, "monitor": key.monitor},
+		graphFrame := data.NewFrame("",
+			data.NewField("Time", nil, make([]time.Time, len(values))),
+			data.NewField("Value",
+				map[string]string{"check": key.check, "instance": key.instance, "monitor": key.monitor},
 				make([]float32, len(values)),
 			),
 		)
 		for pIdx, record := range values {
-			frame.Set(0, pIdx, record.time)
-			frame.Set(1, pIdx, record.value)
+			graphFrame.Set(0, pIdx, record.time)
+			graphFrame.Set(1, pIdx, record.value)
 		}
-		frames = append(frames, frame)
+		graphFrame.Meta = &data.FrameMeta{
+			PreferredVisualization: data.VisTypeGraph,
+		}
+		frames = append(frames, graphFrame)
 	}
 
-	// frame := &data.Frame{
-	// 	Name: DataFrameMonitorTelemetry,
-	// 	Fields: []*data.Field{
-	// 		data.NewField("time", nil, []time.Time{}),
-	// 		data.NewField("", nil, []float32{}),
-	// 		data.NewField("instance", nil, []string{}),
-	// 		data.NewField("check", nil, []string{}),
-	// 		data.NewField("monitor", nil, []string{}),
-	// 	},
-	// }
+	tableFrame := &data.Frame{
+		Name: DataFrameMonitorTelemetry,
+		Fields: []*data.Field{
+			data.NewField("time", nil, []time.Time{}),
+			data.NewField("", nil, []float32{}),
+			data.NewField("instance", nil, []string{}),
+			data.NewField("check", nil, []string{}),
+			data.NewField("monitor", nil, []string{}),
+		},
+	}
 
-	// for _, te := range responses {
-	// 	timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
-	// 	if err != nil {
-	// 		log.DefaultLogger.Error("error while parsing telemetry time %w", err)
-	// 		continue
-	// 	}
-	// 	frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
-	// }
+	for _, te := range responses {
+		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
+		if err != nil {
+			log.DefaultLogger.Error("error while parsing telemetry time %w", err)
+			continue
+		}
+		tableFrame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
+	}
+	tableFrame.Meta = &data.FrameMeta{
+		PreferredVisualization: data.VisTypeTable,
+	}
 
-	// f, err := data.LongToWide(frame, nil)
-	// if err != nil {
-	// 	return backend.DataResponse{}, err
-	// }
+	frames = append(frames, tableFrame)
+
 	return backend.DataResponse{Frames: frames}, nil
 
 }

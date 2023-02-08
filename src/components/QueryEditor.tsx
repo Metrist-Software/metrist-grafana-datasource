@@ -10,6 +10,7 @@ type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
 
+  console.log(props.app)
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
   const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
   const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
