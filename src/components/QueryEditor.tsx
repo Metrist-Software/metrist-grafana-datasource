@@ -9,20 +9,23 @@ import { defaultQuery, DataSourceOptions, Query } from '../types';
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
-
-  switch (props.app) {
-    case CoreApp.CloudAlerting:
-    case CoreApp.UnifiedAlerting:
-      props.query.fromAlerting = true
-    default:
-      props.query.fromAlerting = false
-  }
-
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
   const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
   const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
   const [buildHash, setBuildHash] = useState<string>();
 
+  // On load set the fromAlerting query var to true if CloudAlerting or UnifiedAlerting
+  useEffect(()=>{
+    const { onChange, query } = props;
+    switch (props.app) {
+      case CoreApp.CloudAlerting:
+      case CoreApp.UnifiedAlerting:
+        onChange({ ...query, fromAlerting: true });
+        break;
+    }   
+  }, [])
+
+  // Set the initial monitor list and hash
   useEffect(() => {
     const dataFetch = async () => {
       try {
@@ -194,7 +197,7 @@ export const QueryEditor = (props: Props) => {
         {additionalFormFields(queryType)}
       </InlineFieldRow>
       {additionalFormRows(queryType)}
-      <div><sub>Query Version: {buildHash}</sub></div>
+     <div><sub>Query Version: {buildHash}</sub></div>
     </div>
   );
 }

@@ -42,16 +42,10 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		return backend.DataResponse{}, nil
 	}
 
-	frame := &data.Frame{
-		Name: DataFrameMonitorErrors,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []int64{}),
-			data.NewField("instance", nil, []string{}),
-			data.NewField("check", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
-	}
+	// We are going to generate 2 frame sets. one for graph display and one for table display
+	graphFrameMap := make(map[string]*data.Frame)
+	tableFrameMap := make(map[string]*data.Frame)
+	frames := make([]*data.Frame, 0)
 
 	for _, monitorError := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
@@ -59,15 +53,63 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 			log.DefaultLogger.Error("error while parsing monitor error time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, int64(*monitorError.Count), *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
+
+		key := fmt.Sprintf("%s-%s-%s", *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
+
+		frameToAppendTo, ok := graphFrameMap[key]
+		if !ok {
+			labels := map[string]string{"instance": *monitorError.Instance, "check": *monitorError.Check, "monitor": *monitorError.MonitorLogicalName}
+
+			frameToAppendTo = &data.Frame{
+				Fields: []*data.Field{
+					data.NewField("time", nil, make([]time.Time, 0)),
+					data.NewField("count", labels, make([]int64, 0)),
+				},
+				Meta: &data.FrameMeta{
+					Type: data.FrameTypeTimeSeriesMulti,
+				},
+			}
+
+			graphFrameMap[key] = frameToAppendTo
+		}
+
+		frameToAppendTo.AppendRow(timestamp, int64(*monitorError.Count))
+
+		frameToAppendTo, ok = tableFrameMap[key]
+		if !ok {
+			frameToAppendTo = &data.Frame{
+				Fields: []*data.Field{
+					data.NewField("time", nil, []time.Time{}),
+					data.NewField("count", nil, []int64{}),
+					data.NewField("instance", nil, []string{}),
+					data.NewField("check", nil, []string{}),
+					data.NewField("monitor", nil, []string{}),
+				},
+				Meta: &data.FrameMeta{
+					Type:                   data.FrameTypeTimeSeriesWide,
+					PreferredVisualization: data.VisTypeTable,
+				},
+			}
+
+			tableFrameMap[key] = frameToAppendTo
+		}
+		frameToAppendTo.AppendRow(timestamp, int64(*monitorError.Count), *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
 	}
 
-	f, err := data.LongToWide(frame, nil)
-	if err != nil {
-		return backend.DataResponse{}, err
+	for _, frame := range graphFrameMap {
+		frames = append(frames, frame)
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
+	// If this query is coming from CloudAlerting or Unified alerting do not include the table frames
+	// The table frames are not FrameTypeTimeSeriesWide format which alerting won't accept
+	// See https://github.com/grafana/grafana-plugin-sdk-go/blob/main/data/contract_docs/timeseries.md#time-series-multi-format-timeseriesmulti
+	if !monitorTelemetryQuery.FromAlerting {
+		for _, frame := range tableFrameMap {
+			frames = append(frames, frame)
+		}
+	}
+
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.MonitorErrorCount, error) {
@@ -149,17 +191,12 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 
 // QueryMonitorTelemetry queries `/monitor-telemetry`
 func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
-
-	queryObject, _ := json.Marshal(query)
-	log.DefaultLogger.Info(string(queryObject))
-
 	if err := ensureTelemetryRequestWithinLast90Days(query.TimeRange.From); err != nil {
 		log.DefaultLogger.Error("telemetry requested for greater than 90 days error: %w", err)
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error()), err
 	}
 
 	var monitorTelemetryQuery monitorTelemetryQuery
-
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
@@ -185,6 +222,7 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 	responses := *resp.JSON200
 
+	// We are going to generate 2 frame sets. one for graph display and one for table display
 	graphFrameMap := make(map[string]*data.Frame)
 	tableFrameMap := make(map[string]*data.Frame)
 	frames := make([]*data.Frame, 0)
@@ -203,10 +241,9 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 			labels := map[string]string{"instance": *te.Instance, "check": *te.Check, "monitor": *te.MonitorLogicalName}
 
 			frameToAppendTo = &data.Frame{
-				Name: key,
 				Fields: []*data.Field{
 					data.NewField("time", nil, make([]time.Time, 0)),
-					data.NewField("value", labels, make([]float32, 0)),
+					data.NewField("response time (ms)", labels, make([]float32, 0)),
 				},
 				Meta: &data.FrameMeta{
 					Type: data.FrameTypeTimeSeriesMulti,
@@ -221,10 +258,9 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		frameToAppendTo, ok = tableFrameMap[key]
 		if !ok {
 			frameToAppendTo = &data.Frame{
-				Name: key,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{}),
-					data.NewField("value", nil, []float32{}),
+					data.NewField("response time (ms)", nil, []float32{}),
 					data.NewField("instance", nil, []string{}),
 					data.NewField("check", nil, []string{}),
 					data.NewField("monitor", nil, []string{}),
@@ -237,7 +273,6 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 			tableFrameMap[key] = frameToAppendTo
 		}
-
 		frameToAppendTo.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
 	}
 
@@ -245,6 +280,9 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		frames = append(frames, frame)
 	}
 
+	// If this query is coming from CloudAlerting or Unified alerting do not include the table frames
+	// The table frames are not FrameTypeTimeSeriesWide format which alerting won't accept
+	// See https://github.com/grafana/grafana-plugin-sdk-go/blob/main/data/contract_docs/timeseries.md#time-series-multi-format-timeseriesmulti
 	if !monitorTelemetryQuery.FromAlerting {
 		for _, frame := range tableFrameMap {
 			frames = append(frames, frame)
@@ -271,15 +309,10 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		return backend.DataResponse{}, nil
 	}
 
-	frame := &data.Frame{
-		Name: DataFrameMonitorStatusPageChanges,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []int8{}),
-			data.NewField("component", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
-	}
+	// We are going to generate 2 frame sets. one for graph display and one for table display
+	graphFrameMap := make(map[string]*data.Frame)
+	tableFrameMap := make(map[string]*data.Frame)
+	frames := make([]*data.Frame, 0)
 
 	for _, te := range responses {
 		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
@@ -287,29 +320,81 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 			log.DefaultLogger.Error("error while parsing status page changes time %w", err)
 			continue
 		}
-		frame.AppendRow(timestamp, spcStatusToFloat(*te.Status), *te.Component, *te.MonitorLogicalName)
+
+		key := fmt.Sprintf("%s-%s", *te.Component, *te.MonitorLogicalName)
+
+		frameToAppendTo, ok := graphFrameMap[key]
+		if !ok {
+			labels := map[string]string{"component": *te.Component, "monitor": *te.MonitorLogicalName}
+
+			frameToAppendTo = &data.Frame{
+				Fields: []*data.Field{
+					data.NewField("time", nil, make([]time.Time, 0)),
+					data.NewField("status", labels, make([]int8, 0)),
+				},
+				Meta: &data.FrameMeta{
+					Type: data.FrameTypeTimeSeriesMulti,
+				},
+			}
+
+			graphFrameMap[key] = frameToAppendTo
+		}
+
+		frameToAppendTo.AppendRow(timestamp, spcStatusToInt(*te.Status))
+
+		frameToAppendTo, ok = tableFrameMap[key]
+		if !ok {
+			frameToAppendTo = &data.Frame{
+				Fields: []*data.Field{
+					data.NewField("time", nil, []time.Time{}),
+					data.NewField("status", nil, []int8{}),
+					data.NewField("component", nil, []string{}),
+					data.NewField("monitor", nil, []string{}),
+				},
+				Meta: &data.FrameMeta{
+					Type:                   data.FrameTypeTimeSeriesWide,
+					PreferredVisualization: data.VisTypeTable,
+				},
+			}
+
+			tableFrameMap[key] = frameToAppendTo
+		}
+		frameToAppendTo.AppendRow(timestamp, spcStatusToInt(*te.Status), *te.Component, *te.MonitorLogicalName)
 	}
 
-	longFrame, err := data.LongToWide(frame, nil)
+	for _, frame := range graphFrameMap {
+		frames = append(frames, frame)
+	}
+
+	// If this query is coming from CloudAlerting or Unified alerting do not include the table frames
+	// The table frames are not FrameTypeTimeSeriesWide format which alerting won't accept
+	// See https://github.com/grafana/grafana-plugin-sdk-go/blob/main/data/contract_docs/timeseries.md#time-series-multi-format-timeseriesmulti
+	if !monitorTelemetryQuery.FromAlerting {
+		for _, frame := range tableFrameMap {
+			frames = append(frames, frame)
+		}
+	}
 
 	if err != nil {
 		return backend.DataResponse{}, err
 	}
 
-	for idx, field := range longFrame.Fields {
-		if idx == 0 {
-			continue
+	for _, frame := range frames {
+		for idx, field := range frame.Fields {
+			if idx == 0 {
+				continue
+			}
+			field.SetConfig(&data.FieldConfig{
+				Mappings: data.ValueMappings{
+					data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
+					data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
+					data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
+				},
+			})
 		}
-		field.SetConfig(&data.FieldConfig{
-			Mappings: data.ValueMappings{
-				data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
-				data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
-				data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
-			},
-		})
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.StatusPageComponentChange, error) {
@@ -335,7 +420,7 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 	return monitorStatuses, nil
 }
 
-func spcStatusToFloat(status string) int8 {
+func spcStatusToInt(status string) int8 {
 	statuses := map[string]int8{
 		"up":          0,
 		"operational": 0,
