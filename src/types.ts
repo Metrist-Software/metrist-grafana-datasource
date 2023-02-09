@@ -5,6 +5,7 @@ export interface Query extends DataQuery {
   checks: string[];
   instances: string[];
   includeShared: boolean;
+  fromAlerting: boolean;
 }
 
 export const defaultQuery: Partial<Query> = {

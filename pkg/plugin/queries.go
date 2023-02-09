@@ -149,6 +149,10 @@ func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithRespon
 
 // QueryMonitorTelemetry queries `/monitor-telemetry`
 func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
+
+	queryObject, _ := json.Marshal(query)
+	log.DefaultLogger.Info(string(queryObject))
+
 	if err := ensureTelemetryRequestWithinLast90Days(query.TimeRange.From); err != nil {
 		log.DefaultLogger.Error("telemetry requested for greater than 90 days error: %w", err)
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error()), err
@@ -181,8 +185,8 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 
 	responses := *resp.JSON200
 
-	frameMap := make(map[string]*data.Frame)
-
+	graphFrameMap := make(map[string]*data.Frame)
+	tableFrameMap := make(map[string]*data.Frame)
 	frames := make([]*data.Frame, 0)
 
 	for _, te := range responses {
@@ -193,7 +197,28 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 		}
 
 		key := fmt.Sprintf("%s-%s-%s", *te.Instance, *te.Check, *te.MonitorLogicalName)
-		frameToAppendTo, ok := frameMap[key]
+
+		frameToAppendTo, ok := graphFrameMap[key]
+		if !ok {
+			labels := map[string]string{"instance": *te.Instance, "check": *te.Check, "monitor": *te.MonitorLogicalName}
+
+			frameToAppendTo = &data.Frame{
+				Name: key,
+				Fields: []*data.Field{
+					data.NewField("time", nil, make([]time.Time, 0)),
+					data.NewField("value", labels, make([]float32, 0)),
+				},
+				Meta: &data.FrameMeta{
+					Type: data.FrameTypeTimeSeriesMulti,
+				},
+			}
+
+			graphFrameMap[key] = frameToAppendTo
+		}
+
+		frameToAppendTo.AppendRow(timestamp, *te.Value)
+
+		frameToAppendTo, ok = tableFrameMap[key]
 		if !ok {
 			frameToAppendTo = &data.Frame{
 				Name: key,
@@ -205,31 +230,26 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 					data.NewField("monitor", nil, []string{}),
 				},
 				Meta: &data.FrameMeta{
-					Type:                   data.FrameTypeNumericMulti,
-					PreferredVisualization: data.VisTypeGraph,
+					Type:                   data.FrameTypeTimeSeriesWide,
+					PreferredVisualization: data.VisTypeTable,
 				},
 			}
 
-			frameMap[key] = frameToAppendTo
+			tableFrameMap[key] = frameToAppendTo
 		}
 
 		frameToAppendTo.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
 	}
 
-	for _, frame := range frameMap {
+	for _, frame := range graphFrameMap {
 		frames = append(frames, frame)
 	}
 
-	log.DefaultLogger.Info("Length of frames at this point is %d", len(frames))
-
-	for _, frame := range frameMap {
-		frame2 := *frame
-		new_meta := *frame2.Meta
-		new_meta.PreferredVisualization = data.VisTypeTable
-		frame2.Meta = &new_meta
-		frames = append(frames, &frame2)
+	if !monitorTelemetryQuery.FromAlerting {
+		for _, frame := range tableFrameMap {
+			frames = append(frames, frame)
+		}
 	}
-	log.DefaultLogger.Info("Length of frames after graph is %d", len(frames))
 
 	return backend.DataResponse{Frames: frames}, nil
 }

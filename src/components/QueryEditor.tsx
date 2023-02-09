@@ -2,13 +2,21 @@ import defaults from 'lodash/defaults';
 
 import React, { ChangeEvent, useEffect, useState } from 'react';
 import { InlineField, InlineFieldRow, InlineLabel, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
-import { QueryEditorProps, SelectableValue } from '@grafana/data';
+import { QueryEditorProps, SelectableValue, CoreApp } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
+
+  switch (props.app) {
+    case CoreApp.CloudAlerting:
+    case CoreApp.UnifiedAlerting:
+      props.query.fromAlerting = true
+    default:
+      props.query.fromAlerting = false
+  }
 
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
   const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
