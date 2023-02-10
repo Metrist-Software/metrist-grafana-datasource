@@ -27,7 +27,7 @@ func TestQueryMonitorTelemetry(t *testing.T) {
 			name: "Returns a dataframe if client returns telemetry",
 			client: stubClient{
 				telemetryResponse: internal.BackendWebMonitorTelemetryControllerGetResponse{
-					JSON200: &internal.MonitorTelemetry{{
+					JSON200: &internal.MonitorTelemetryResponse{internal.MonitorTelemetry{
 						Check:              ptr("Check"),
 						Instance:           ptr("us-east-1"),
 						MonitorLogicalName: ptr("awslambda"),
@@ -59,7 +59,7 @@ func TestQueryMonitorTelemetry(t *testing.T) {
 			name: "Returns an empty frame if no response",
 			client: stubClient{
 				telemetryResponse: internal.BackendWebMonitorTelemetryControllerGetResponse{
-					JSON200: &internal.MonitorTelemetry{},
+					JSON200: &internal.MonitorTelemetryResponse{},
 				},
 			},
 			want: data.Frames{},
@@ -97,13 +97,13 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorStatusPageChanges"}`)
 	tests := []struct {
-		page *internal.StatusPageComponentChanges
+		page *internal.StatusPageChangesResponse
 		name string
 		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			page: &internal.StatusPageComponentChanges{
+			page: &internal.StatusPageChangesResponse{
 				Metadata: &internal.PagingMetadata{},
 				Entries: &[]internal.StatusPageComponentChange{{
 					Component:          ptr("component1"),
@@ -132,7 +132,7 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 		},
 		{
 			name: "Returns an empty frame if no response",
-			page: &internal.StatusPageComponentChanges{
+			page: &internal.StatusPageChangesResponse{
 				Metadata: &internal.PagingMetadata{},
 				Entries:  &[]internal.StatusPageComponentChange{},
 			},
