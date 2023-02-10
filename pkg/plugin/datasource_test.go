@@ -115,14 +115,14 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 			want: data.Frames{{
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("status", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{0}),
+					data.NewField("status", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{2}),
 				},
 				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti, PreferredVisualization: data.VisTypeGraph},
 			},
 				{
 					Fields: []*data.Field{
 						data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-						data.NewField("status", nil, []int8{0}),
+						data.NewField("status", nil, []int8{2}),
 						data.NewField("component", nil, []string{"component1"}),
 						data.NewField("monitor", nil, []string{"monitor"}),
 					},
