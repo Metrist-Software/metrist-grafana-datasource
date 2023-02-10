@@ -16,8 +16,8 @@ export const QueryEditor = (props: Props) => {
 
   // On load set the fromAlerting query var to true if CloudAlerting or UnifiedAlerting
   useEffect(()=>{
-    const { app, onChange, query } = props;
-    switch (app) {
+    const { onChange, query } = props;
+    switch (props.app) {
       case CoreApp.CloudAlerting:
       case CoreApp.UnifiedAlerting:
         onChange({ ...query, fromAlerting: true });
