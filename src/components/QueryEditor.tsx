@@ -13,17 +13,14 @@ export const QueryEditor = (props: Props) => {
   const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
   const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
   const [buildHash, setBuildHash] = useState<string>();
+  const query = defaults(props.query, defaultQuery);
 
-  // On load set the fromAlerting query var to true if CloudAlerting or UnifiedAlerting
-  useEffect(()=>{
-    const { onChange, query } = props;
-    switch (props.app) {
-      case CoreApp.CloudAlerting:
-      case CoreApp.UnifiedAlerting:
-        onChange({ ...query, fromAlerting: true });
-        break;
-    }   
-  }, [])
+  switch (props.app) {
+    case CoreApp.CloudAlerting:
+    case CoreApp.UnifiedAlerting:
+      query.fromAlerting = true
+      break;
+  }
 
   // Set the initial monitor list and hash
   useEffect(() => {
@@ -152,7 +149,6 @@ export const QueryEditor = (props: Props) => {
     }
   }
 
-  const query = defaults(props.query, defaultQuery);
   const { monitors, queryType } = query;
 
   if (!monitorSelect) {
