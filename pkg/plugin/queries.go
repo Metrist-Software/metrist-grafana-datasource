@@ -47,7 +47,6 @@ func buildFrames(responses []internal.FrameData, frameType frameType, frames []*
 		frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
 		// For table Wide frames, we always want to append to the one single frame in order
 		if frameType == TableFrameType && frameToAppendTo == nil {
-			log.DefaultLogger.Error("Setting table frame")
 			frameToAppendTo = &frameDefinition
 			frameMap["fixed-table"] = frameToAppendTo
 		} else if frameType == GraphFrameType {
