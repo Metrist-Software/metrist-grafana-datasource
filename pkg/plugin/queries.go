@@ -35,6 +35,7 @@ const (
 func buildFrames(responses []internal.FrameData, frameType frameType, frames []*data.Frame) []*data.Frame {
 	frameMap := make(map[string]*data.Frame)
 
+	var frameToAppendTo *data.Frame
 	for _, frameDataItem := range responses {
 		timestamp, err := frameDataItem.GetTimestamp()
 		if err != nil {
@@ -42,11 +43,20 @@ func buildFrames(responses []internal.FrameData, frameType frameType, frames []*
 			continue
 		}
 		key := frameDataItem.GetKey()
-		frameToAppendTo, ok := frameMap[key]
-		if !ok {
-			frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
+
+		frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
+		// For table Wide frames, we always want to append to the one single frame in order
+		if frameType == TableFrameType && frameToAppendTo == nil {
+			log.DefaultLogger.Error("Setting table frame")
 			frameToAppendTo = &frameDefinition
-			frameMap[key] = frameToAppendTo
+			frameMap["fixed-table"] = frameToAppendTo
+		} else if frameType == GraphFrameType {
+			var ok bool
+			frameToAppendTo, ok = frameMap[key]
+			if !ok {
+				frameToAppendTo = &frameDefinition
+				frameMap[key] = frameToAppendTo
+			}
 		}
 
 		vals := getValDefinitionFunction(frameType, frameDataItem)(timestamp)
@@ -274,6 +284,7 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 					data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
 					data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
 					data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
+					data.ValueMapper{"3": data.ValueMappingResult{Text: "(3) maintenance", Color: "blue"}},
 				},
 			})
 		}

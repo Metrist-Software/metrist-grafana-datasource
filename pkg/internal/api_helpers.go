@@ -43,7 +43,8 @@ func (errorCount *MonitorErrorCount) GetGraphFrameDefinition() data.Frame {
 			data.NewField("count", errorCount.getLabels(), make([]int64, 0)),
 		},
 		Meta: &data.FrameMeta{
-			Type: data.FrameTypeTimeSeriesMulti,
+			Type:                   data.FrameTypeTimeSeriesMulti,
+			PreferredVisualization: data.VisTypeGraph,
 		},
 	}
 }
@@ -92,7 +93,8 @@ func (te *MonitorTelemetry) GetGraphFrameDefinition() data.Frame {
 			data.NewField("response time (ms)", te.getLabels(), make([]float32, 0)),
 		},
 		Meta: &data.FrameMeta{
-			Type: data.FrameTypeTimeSeriesMulti,
+			Type:                   data.FrameTypeTimeSeriesMulti,
+			PreferredVisualization: data.VisTypeGraph,
 		},
 	}
 }
@@ -141,7 +143,8 @@ func (spc *StatusPageComponentChange) GetGraphFrameDefinition() data.Frame {
 			data.NewField("status", spc.getLabels(), make([]int8, 0)),
 		},
 		Meta: &data.FrameMeta{
-			Type: data.FrameTypeTimeSeriesMulti,
+			Type:                   data.FrameTypeTimeSeriesMulti,
+			PreferredVisualization: data.VisTypeGraph,
 		},
 	}
 }
@@ -165,12 +168,30 @@ func (spc *StatusPageComponentChange) getLabels() map[string]string {
 	return map[string]string{"component": *spc.Component, "monitor": *spc.MonitorLogicalName}
 }
 
+// Map statuses to numeric values for Frames
 func spcStatusToInt(status string) int8 {
 	statuses := map[string]int8{
-		"up":          0,
-		"operational": 0,
-		"degraded":    1,
-		"down":        2,
+		"up":                   0,
+		"operational":          0,
+		"Good":                 0,
+		"Information":          0,
+		"NotApplicable":        0,
+		"Advisory":             0,
+		"Healthy":              0,
+		"available":            0,
+		"information":          0,
+		"Degraded":             1,
+		"Warning":              1,
+		"degraded":             1,
+		"disruption":           1,
+		"down":                 2,
+		"Disruption":           2,
+		"Critical":             2,
+		"outage":               2,
+		"degraded_performance": 2,
+		"major_outage":         2,
+		"partial_outage":       2,
+		"under_maintenance":    3,
 	}
 	result := statuses[status]
 	return result
