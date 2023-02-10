@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.4
+- Added other status page status to numeric value mappings
+- Ensured that VisTypeTable frames are always ordered correctly
+
 ## 0.0.3
 
 - Fixed error caused by invalid data frames that would sometimes cause the graphs not to refresh and would emit js console errors

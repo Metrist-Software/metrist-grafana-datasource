@@ -41,7 +41,7 @@ func TestQueryMonitorTelemetry(t *testing.T) {
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
 					data.NewField("response time (ms)", data.Labels{"instance": "us-east-1", "check": "Check", "monitor": "awslambda"}, []float32{value}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti, PreferredVisualization: data.VisTypeGraph},
 			},
 				{
 					Fields: []*data.Field{
@@ -115,14 +115,14 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 			want: data.Frames{{
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("status", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{0}),
+					data.NewField("status", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{2}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti, PreferredVisualization: data.VisTypeGraph},
 			},
 				{
 					Fields: []*data.Field{
 						data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-						data.NewField("status", nil, []int8{0}),
+						data.NewField("status", nil, []int8{2}),
 						data.NewField("component", nil, []string{"component1"}),
 						data.NewField("monitor", nil, []string{"monitor"}),
 					},
@@ -202,7 +202,7 @@ func TestQueryMonitorErrors(t *testing.T) {
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
 					data.NewField("count", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int64{1}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti, PreferredVisualization: data.VisTypeGraph},
 			},
 				{
 					Fields: []*data.Field{
