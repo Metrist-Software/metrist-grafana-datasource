@@ -42,14 +42,14 @@ func buildFrames(responses []internal.FrameData, frameType frameType, frames []*
 			log.DefaultLogger.Error("error while parsing time %w", err)
 			continue
 		}
-		key := frameDataItem.GetKey()
-
 		frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
 		// For table Wide frames, we always want to append to the one single frame in order
 		if frameType == TableFrameType && frameToAppendTo == nil {
 			frameToAppendTo = &frameDefinition
 			frameMap["fixed-table"] = frameToAppendTo
 		} else if frameType == GraphFrameType {
+			key := frameDataItem.GetKey()
+
 			var ok bool
 			frameToAppendTo, ok = frameMap[key]
 			if !ok {
