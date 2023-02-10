@@ -26,7 +26,124 @@ const (
 	maxPageCount = 20
 )
 
-// QueryMonitorErrors queries `/monitor-telemetry`
+type frameData interface {
+	getTimestamp() (time.Time, error)
+	getGraphVals(timestamp time.Time) []any
+	getTableVals(timestamp time.Time) []any
+	getKey() string
+	getLabels() map[string]string
+
+	getGraphFrameDefinition() data.Frame
+	getTableFrameDefinition() data.Frame
+}
+
+type monitorErrorCount internal.MonitorErrorCount
+
+type frameType int64
+
+const (
+	GraphFrameType frameType = 0
+	TableFrameType frameType = 1
+)
+
+func (errorCount *monitorErrorCount) getTimestamp() (time.Time, error) {
+	return time.Parse(time.RFC3339, *errorCount.Timestamp)
+}
+
+func (errorCount *monitorErrorCount) getGraphVals(timestamp time.Time) []any {
+	return []any{timestamp, int64(*errorCount.Count)}
+}
+
+func (errorCount *monitorErrorCount) getTableVals(timestamp time.Time) []any {
+	return []any{timestamp, int64(*errorCount.Count), *errorCount.Instance, *errorCount.Check, *errorCount.MonitorLogicalName}
+}
+
+func (errorCount *monitorErrorCount) getKey() string {
+	return fmt.Sprintf("%s-%s-%s", *errorCount.Instance, *errorCount.Check, *errorCount.MonitorLogicalName)
+}
+
+func (errorCount *monitorErrorCount) getLabels() map[string]string {
+	return map[string]string{"instance": *errorCount.Instance, "check": *errorCount.Check, "monitor": *errorCount.MonitorLogicalName}
+}
+
+func (errorCount *monitorErrorCount) getGraphFrameDefinition() data.Frame {
+	return data.Frame{
+		Fields: []*data.Field{
+			data.NewField("time", nil, make([]time.Time, 0)),
+			data.NewField("count", errorCount.getLabels(), make([]int64, 0)),
+		},
+		Meta: &data.FrameMeta{
+			Type: data.FrameTypeTimeSeriesMulti,
+		},
+	}
+}
+
+func (errorCount *monitorErrorCount) getTableFrameDefinition() data.Frame {
+	return data.Frame{
+		Fields: []*data.Field{
+			data.NewField("time", nil, []time.Time{}),
+			data.NewField("count", nil, []int64{}),
+			data.NewField("instance", nil, []string{}),
+			data.NewField("check", nil, []string{}),
+			data.NewField("monitor", nil, []string{}),
+		},
+		Meta: &data.FrameMeta{
+			Type:                   data.FrameTypeTimeSeriesWide,
+			PreferredVisualization: data.VisTypeTable,
+		},
+	}
+}
+
+func buildFrames(responses []frameData, frameType frameType, frames []*data.Frame) []*data.Frame {
+	frameMap := make(map[string]*data.Frame)
+
+	for _, frameDataItem := range responses {
+		timestamp, err := frameDataItem.getTimestamp()
+		if err != nil {
+			log.DefaultLogger.Error("error while parsing time %w", err)
+			continue
+		}
+		key := frameDataItem.getKey()
+		frameToAppendTo, ok := frameMap[key]
+		if !ok {
+			frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
+			frameToAppendTo = &frameDefinition
+			frameMap[key] = frameToAppendTo
+		}
+
+		vals := getValDefinitionFunction(frameType, frameDataItem)(timestamp)
+		frameToAppendTo.AppendRow(vals...)
+	}
+	for _, frame := range frameMap {
+		frames = append(frames, frame)
+	}
+
+	return frames
+}
+
+func getFrameDefinitionFunction(frameType frameType, frameData frameData) func() data.Frame {
+	switch frameType {
+	case GraphFrameType:
+		return frameData.getGraphFrameDefinition
+	case TableFrameType:
+		return frameData.getTableFrameDefinition
+	}
+
+	return nil
+}
+
+func getValDefinitionFunction(frameType frameType, frameData frameData) func(time.Time) []any {
+	switch frameType {
+	case GraphFrameType:
+		return frameData.getGraphVals
+	case TableFrameType:
+		return frameData.getTableVals
+	}
+
+	return nil
+}
+
+// QueryMonitorErrors queries `/monitor-errors`
 func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
 	var monitorTelemetryQuery monitorTelemetryQuery
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
@@ -42,73 +159,17 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		return backend.DataResponse{}, nil
 	}
 
-	// We are going to generate 2 frame sets. one for graph display and one for table display
-	graphFrameMap := make(map[string]*data.Frame)
-	tableFrameMap := make(map[string]*data.Frame)
+	coerced_counts := make([]frameData, len(responses))
+	for i := range responses {
+		newVar := monitorErrorCount(responses[i])
+		coerced_counts[i] = &newVar
+	}
+
 	frames := make([]*data.Frame, 0)
-
-	for _, monitorError := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
-		if err != nil {
-			log.DefaultLogger.Error("error while parsing monitor error time %w", err)
-			continue
-		}
-
-		key := fmt.Sprintf("%s-%s-%s", *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
-
-		frameToAppendTo, ok := graphFrameMap[key]
-		if !ok {
-			labels := map[string]string{"instance": *monitorError.Instance, "check": *monitorError.Check, "monitor": *monitorError.MonitorLogicalName}
-
-			frameToAppendTo = &data.Frame{
-				Fields: []*data.Field{
-					data.NewField("time", nil, make([]time.Time, 0)),
-					data.NewField("count", labels, make([]int64, 0)),
-				},
-				Meta: &data.FrameMeta{
-					Type: data.FrameTypeTimeSeriesMulti,
-				},
-			}
-
-			graphFrameMap[key] = frameToAppendTo
-		}
-
-		frameToAppendTo.AppendRow(timestamp, int64(*monitorError.Count))
-
-		frameToAppendTo, ok = tableFrameMap[key]
-		if !ok {
-			frameToAppendTo = &data.Frame{
-				Fields: []*data.Field{
-					data.NewField("time", nil, []time.Time{}),
-					data.NewField("count", nil, []int64{}),
-					data.NewField("instance", nil, []string{}),
-					data.NewField("check", nil, []string{}),
-					data.NewField("monitor", nil, []string{}),
-				},
-				Meta: &data.FrameMeta{
-					Type:                   data.FrameTypeTimeSeriesWide,
-					PreferredVisualization: data.VisTypeTable,
-				},
-			}
-
-			tableFrameMap[key] = frameToAppendTo
-		}
-		frameToAppendTo.AppendRow(timestamp, int64(*monitorError.Count), *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
-	}
-
-	for _, frame := range graphFrameMap {
-		frames = append(frames, frame)
-	}
-
-	// If this query is coming from CloudAlerting or Unified alerting do not include the table frames
-	// The table frames are not FrameTypeTimeSeriesWide format which alerting won't accept
-	// See https://github.com/grafana/grafana-plugin-sdk-go/blob/main/data/contract_docs/timeseries.md#time-series-multi-format-timeseriesmulti
+	frames = buildFrames(coerced_counts, GraphFrameType, frames)
 	if !monitorTelemetryQuery.FromAlerting {
-		for _, frame := range tableFrameMap {
-			frames = append(frames, frame)
-		}
+		frames = buildFrames(coerced_counts, TableFrameType, frames)
 	}
-
 	return backend.DataResponse{Frames: frames}, nil
 }
 
