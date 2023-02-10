@@ -305,17 +305,6 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 	return monitorStatuses, nil
 }
 
-func spcStatusToInt(status string) int8 {
-	statuses := map[string]int8{
-		"up":          0,
-		"operational": 0,
-		"degraded":    1,
-		"down":        2,
-	}
-	result := statuses[status]
-	return result
-}
-
 func withAPIKey(apiKey string) internal.RequestEditorFn {
 	return func(ctx context.Context, req *http.Request) error {
 		req.Header.Add("Authorization", apiKey)
