@@ -14,6 +14,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type frameType int64
+
+const (
+	GraphFrameType frameType = 0
+	TableFrameType frameType = 1
+)
+
 const (
 	DataFrameMonitorErrors            = "errors"
 	DataFrameMonitorTelemetry         = "telemetry"
@@ -24,6 +31,55 @@ const (
 const (
 	maxPageCount = 20
 )
+
+func buildFrames(responses []internal.FrameData, frameType frameType, frames []*data.Frame) []*data.Frame {
+	frameMap := make(map[string]*data.Frame)
+
+	for _, frameDataItem := range responses {
+		timestamp, err := frameDataItem.GetTimestamp()
+		if err != nil {
+			log.DefaultLogger.Error("error while parsing time %w", err)
+			continue
+		}
+		key := frameDataItem.GetKey()
+		frameToAppendTo, ok := frameMap[key]
+		if !ok {
+			frameDefinition := getFrameDefinitionFunction(frameType, frameDataItem)()
+			frameToAppendTo = &frameDefinition
+			frameMap[key] = frameToAppendTo
+		}
+
+		vals := getValDefinitionFunction(frameType, frameDataItem)(timestamp)
+		frameToAppendTo.AppendRow(vals...)
+	}
+	for _, frame := range frameMap {
+		frames = append(frames, frame)
+	}
+
+	return frames
+}
+
+func getFrameDefinitionFunction(frameType frameType, frameData internal.FrameData) func() data.Frame {
+	switch frameType {
+	case GraphFrameType:
+		return frameData.GetGraphFrameDefinition
+	case TableFrameType:
+		return frameData.GetTableFrameDefinition
+	}
+
+	return nil
+}
+
+func getValDefinitionFunction(frameType frameType, frameData internal.FrameData) func(time.Time) []any {
+	switch frameType {
+	case GraphFrameType:
+		return frameData.GetGraphVals
+	case TableFrameType:
+		return frameData.GetTableVals
+	}
+
+	return nil
+}
 
 // QueryMonitorErrors queries `/monitor-telemetry`
 func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client internal.ClientWithResponsesInterface) (backend.DataResponse, error) {
@@ -41,32 +97,18 @@ func QueryMonitorErrors(ctx context.Context, query backend.DataQuery, client int
 		return backend.DataResponse{}, nil
 	}
 
-	frame := &data.Frame{
-		Name: DataFrameMonitorErrors,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []int64{}),
-			data.NewField("instance", nil, []string{}),
-			data.NewField("check", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
+	// Have to coerce these into actual internal.FrameData as you can't pass responses to []any
+	coercedCounts := make([]internal.FrameData, len(responses))
+	for i := range responses {
+		coercedCounts[i] = &responses[i]
 	}
 
-	for _, monitorError := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *monitorError.Timestamp)
-		if err != nil {
-			log.DefaultLogger.Error("error while parsing monitor error time %w", err)
-			continue
-		}
-		frame.AppendRow(timestamp, int64(*monitorError.Count), *monitorError.Instance, *monitorError.Check, *monitorError.MonitorLogicalName)
+	frames := make([]*data.Frame, 0)
+	frames = buildFrames(coercedCounts, GraphFrameType, frames)
+	if !monitorTelemetryQuery.FromAlerting {
+		frames = buildFrames(coercedCounts, TableFrameType, frames)
 	}
-
-	f, err := data.LongToWide(frame, nil)
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-
-	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 func fetchAllMonitorErrors(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.MonitorErrorCount, error) {
@@ -154,7 +196,6 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 	}
 
 	var monitorTelemetryQuery monitorTelemetryQuery
-
 	if err := json.Unmarshal(query.JSON, &monitorTelemetryQuery); err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, "json unmarshal: "+err.Error()), err
 	}
@@ -179,32 +220,19 @@ func QueryMonitorTelemetry(ctx context.Context, query backend.DataQuery, client 
 	}
 
 	responses := *resp.JSON200
-	frame := &data.Frame{
-		Name: DataFrameMonitorTelemetry,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []float32{}),
-			data.NewField("instance", nil, []string{}),
-			data.NewField("check", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
+
+	// Have to coerce these into actual internal.FrameData as you can't pass responses to []any
+	coercedTelemetry := make([]internal.FrameData, len(responses))
+	for i := range responses {
+		coercedTelemetry[i] = &responses[i]
 	}
 
-	for _, te := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
-		if err != nil {
-			log.DefaultLogger.Error("error while parsing telemetry time %w", err)
-			continue
-		}
-		frame.AppendRow(timestamp, *te.Value, *te.Instance, *te.Check, *te.MonitorLogicalName)
+	frames := make([]*data.Frame, 0)
+	frames = buildFrames(coercedTelemetry, GraphFrameType, frames)
+	if !monitorTelemetryQuery.FromAlerting {
+		frames = buildFrames(coercedTelemetry, TableFrameType, frames)
 	}
-
-	f, err := data.LongToWide(frame, nil)
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-	return backend.DataResponse{Frames: []*data.Frame{f}}, nil
-
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 // QueryMonitorStatusPageChanges queries `/status-page-changes`
@@ -224,45 +252,34 @@ func QueryMonitorStatusPageChanges(ctx context.Context, query backend.DataQuery,
 		return backend.DataResponse{}, nil
 	}
 
-	frame := &data.Frame{
-		Name: DataFrameMonitorStatusPageChanges,
-		Fields: []*data.Field{
-			data.NewField("time", nil, []time.Time{}),
-			data.NewField("", nil, []int8{}),
-			data.NewField("component", nil, []string{}),
-			data.NewField("monitor", nil, []string{}),
-		},
+	// Have to coerce these into actual internal.FrameData as you can't pass responses to []any
+	coercedStatusPageChanges := make([]internal.FrameData, len(responses))
+	for i := range responses {
+		coercedStatusPageChanges[i] = &responses[i]
 	}
 
-	for _, te := range responses {
-		timestamp, err := time.Parse(time.RFC3339, *te.Timestamp)
-		if err != nil {
-			log.DefaultLogger.Error("error while parsing status page changes time %w", err)
-			continue
+	frames := make([]*data.Frame, 0)
+	frames = buildFrames(coercedStatusPageChanges, GraphFrameType, frames)
+	if !monitorTelemetryQuery.FromAlerting {
+		frames = buildFrames(coercedStatusPageChanges, TableFrameType, frames)
+	}
+
+	for _, frame := range frames {
+		for idx, field := range frame.Fields {
+			if idx == 0 {
+				continue
+			}
+			field.SetConfig(&data.FieldConfig{
+				Mappings: data.ValueMappings{
+					data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
+					data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
+					data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
+				},
+			})
 		}
-		frame.AppendRow(timestamp, spcStatusToFloat(*te.Status), *te.Component, *te.MonitorLogicalName)
 	}
 
-	longFrame, err := data.LongToWide(frame, nil)
-
-	if err != nil {
-		return backend.DataResponse{}, err
-	}
-
-	for idx, field := range longFrame.Fields {
-		if idx == 0 {
-			continue
-		}
-		field.SetConfig(&data.FieldConfig{
-			Mappings: data.ValueMappings{
-				data.ValueMapper{"0": data.ValueMappingResult{Text: "(0) up", Color: "green"}},
-				data.ValueMapper{"1": data.ValueMappingResult{Text: "(1) degraded", Color: "yellow"}},
-				data.ValueMapper{"2": data.ValueMappingResult{Text: "(2) error", Color: "red"}},
-			},
-		})
-	}
-
-	return backend.DataResponse{Frames: []*data.Frame{longFrame}}, nil
+	return backend.DataResponse{Frames: frames}, nil
 }
 
 func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithResponsesInterface, query monitorTelemetryQuery, tr backend.TimeRange) ([]internal.StatusPageComponentChange, error) {
@@ -286,17 +303,6 @@ func fetchAllStatusPageMonitor(ctx context.Context, client internal.ClientWithRe
 		}
 	}
 	return monitorStatuses, nil
-}
-
-func spcStatusToFloat(status string) int8 {
-	statuses := map[string]int8{
-		"up":          0,
-		"operational": 0,
-		"degraded":    1,
-		"down":        2,
-	}
-	result := statuses[status]
-	return result
 }
 
 func withAPIKey(apiKey string) internal.RequestEditorFn {

@@ -12,6 +12,7 @@ type monitorTelemetryQuery struct {
 	Checks        *[]string `json:"checks"`
 	Instances     *[]string `json:"instances"`
 	IncludeShared bool      `json:"includeshared"`
+	FromAlerting  bool      `json:"fromalerting"`
 }
 
 type selectOption struct {

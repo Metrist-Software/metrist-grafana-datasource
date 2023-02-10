@@ -2,19 +2,27 @@ import defaults from 'lodash/defaults';
 
 import React, { ChangeEvent, useEffect, useState } from 'react';
 import { InlineField, InlineFieldRow, InlineLabel, InlineSwitch, LoadingPlaceholder, MultiSelect, Select } from '@grafana/ui';
-import { QueryEditorProps, SelectableValue } from '@grafana/data';
+import { QueryEditorProps, SelectableValue, CoreApp } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { defaultQuery, DataSourceOptions, Query } from '../types';
 
 type Props = QueryEditorProps<DataSource, Query, DataSourceOptions>;
 
 export const QueryEditor = (props: Props) => {
-
   const [monitorSelect, setMonitors] = useState<Array<SelectableValue<string>>>();
   const [checkSelect, setChecks] = useState<Array<SelectableValue<string>>>();
   const [instanceSelect, setInstances] = useState<Array<SelectableValue<string>>>();
   const [buildHash, setBuildHash] = useState<string>();
+  const query = defaults(props.query, defaultQuery);
 
+  switch (props.app) {
+    case CoreApp.CloudAlerting:
+    case CoreApp.UnifiedAlerting:
+      query.fromAlerting = true
+      break;
+  }
+
+  // Set the initial monitor list and hash
   useEffect(() => {
     const dataFetch = async () => {
       try {
@@ -141,7 +149,6 @@ export const QueryEditor = (props: Props) => {
     }
   }
 
-  const query = defaults(props.query, defaultQuery);
   const { monitors, queryType } = query;
 
   if (!monitorSelect) {
@@ -186,7 +193,7 @@ export const QueryEditor = (props: Props) => {
         {additionalFormFields(queryType)}
       </InlineFieldRow>
       {additionalFormRows(queryType)}
-      <div><sub>Query Version: {buildHash}</sub></div>
+     <div><sub>Query Version: {buildHash}</sub></div>
     </div>
   );
 }

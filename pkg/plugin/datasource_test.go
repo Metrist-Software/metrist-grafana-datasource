@@ -27,7 +27,7 @@ func TestQueryMonitorTelemetry(t *testing.T) {
 			name: "Returns a dataframe if client returns telemetry",
 			client: stubClient{
 				telemetryResponse: internal.BackendWebMonitorTelemetryControllerGetResponse{
-					JSON200: &internal.MonitorTelemetry{{
+					JSON200: &internal.MonitorTelemetryResponse{internal.MonitorTelemetry{
 						Check:              ptr("Check"),
 						Instance:           ptr("us-east-1"),
 						MonitorLogicalName: ptr("awslambda"),
@@ -37,19 +37,29 @@ func TestQueryMonitorTelemetry(t *testing.T) {
 				},
 			},
 			want: data.Frames{{
-				Name: DataFrameMonitorTelemetry,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("", data.Labels{"instance": "us-east-1", "check": "Check", "monitor": "awslambda"}, []float32{value}),
+					data.NewField("response time (ms)", data.Labels{"instance": "us-east-1", "check": "Check", "monitor": "awslambda"}, []float32{value}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
-			}},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+			},
+				{
+					Fields: []*data.Field{
+						data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
+						data.NewField("response time (ms)", nil, []float32{100}),
+						data.NewField("instance", nil, []string{"us-east-1"}),
+						data.NewField("check", nil, []string{"Check"}),
+						data.NewField("monitor", nil, []string{"awslambda"}),
+					},
+					Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide, PreferredVisualization: data.VisTypeTable},
+				},
+			},
 		},
 		{
 			name: "Returns an empty frame if no response",
 			client: stubClient{
 				telemetryResponse: internal.BackendWebMonitorTelemetryControllerGetResponse{
-					JSON200: &internal.MonitorTelemetry{},
+					JSON200: &internal.MonitorTelemetryResponse{},
 				},
 			},
 			want: data.Frames{},
@@ -87,13 +97,13 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 	}
 	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorStatusPageChanges"}`)
 	tests := []struct {
-		page *internal.StatusPageComponentChanges
+		page *internal.StatusPageChangesResponse
 		name string
 		want data.Frames
 	}{
 		{
 			name: "Returns a dataframe if client returns telemetry",
-			page: &internal.StatusPageComponentChanges{
+			page: &internal.StatusPageChangesResponse{
 				Metadata: &internal.PagingMetadata{},
 				Entries: &[]internal.StatusPageComponentChange{{
 					Component:          ptr("component1"),
@@ -103,17 +113,26 @@ func TestQueryMonitorStatusPageChanges(t *testing.T) {
 				}},
 			},
 			want: data.Frames{{
-				Name: DataFrameMonitorStatusPageChanges,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{0}),
+					data.NewField("status", data.Labels{"component": "component1", "monitor": "monitor"}, []int8{0}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
-			}},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+			},
+				{
+					Fields: []*data.Field{
+						data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
+						data.NewField("status", nil, []int8{0}),
+						data.NewField("component", nil, []string{"component1"}),
+						data.NewField("monitor", nil, []string{"monitor"}),
+					},
+					Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide, PreferredVisualization: data.VisTypeTable},
+				},
+			},
 		},
 		{
 			name: "Returns an empty frame if no response",
-			page: &internal.StatusPageComponentChanges{
+			page: &internal.StatusPageChangesResponse{
 				Metadata: &internal.PagingMetadata{},
 				Entries:  &[]internal.StatusPageComponentChange{},
 			},
@@ -160,7 +179,7 @@ func TestQueryMonitorErrors(t *testing.T) {
 		To:   time.Now(),
 		From: time.Now().Add(time.Hour * time.Duration(-100)),
 	}
-	query := []byte(`{"monitors": ["awslambda"], "includeShared": true, "queryType": "GetMonitorErrors"}`)
+	query := []byte(`{"monitors": ["awslambda"], "includeShared": false, "queryType": "GetMonitorErrors"}`)
 	tests := []struct {
 		page *internal.MonitorErrorResponse
 		name string
@@ -179,13 +198,23 @@ func TestQueryMonitorErrors(t *testing.T) {
 				Metadata: &internal.PagingMetadata{},
 			},
 			want: data.Frames{{
-				Name: DataFrameMonitorErrors,
 				Fields: []*data.Field{
 					data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
-					data.NewField("", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int64{1}),
+					data.NewField("count", data.Labels{"check": "check", "monitor": "monitor", "instance": "us-east-1"}, []int64{1}),
 				},
-				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide},
-			}},
+				Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesMulti},
+			},
+				{
+					Fields: []*data.Field{
+						data.NewField("time", nil, []time.Time{strToTime("2022-12-07T18:28:06.485416Z")}),
+						data.NewField("count", nil, []int64{1}),
+						data.NewField("instance", nil, []string{"us-east-1"}),
+						data.NewField("check", nil, []string{"check"}),
+						data.NewField("monitor", nil, []string{"monitor"}),
+					},
+					Meta: &data.FrameMeta{Type: data.FrameTypeTimeSeriesWide, PreferredVisualization: data.VisTypeTable},
+				},
+			},
 		},
 		{
 			name: "Returns an empty frame if no response",

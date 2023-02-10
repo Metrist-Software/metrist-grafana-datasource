@@ -27,13 +27,13 @@ const (
 	Exe MonitorConfigRunSpecRunType = "exe"
 )
 
-// Defines values for MonitorStatusesState.
+// Defines values for MonitorStatusesResponseState.
 const (
-	Degraded    MonitorStatusesState = "degraded"
-	Down        MonitorStatusesState = "down"
-	Issues      MonitorStatusesState = "issues"
-	Maintenance MonitorStatusesState = "maintenance"
-	Up          MonitorStatusesState = "up"
+	Degraded    MonitorStatusesResponseState = "degraded"
+	Down        MonitorStatusesResponseState = "down"
+	Issues      MonitorStatusesResponseState = "issues"
+	Maintenance MonitorStatusesResponseState = "maintenance"
+	Up          MonitorStatusesResponseState = "up"
 )
 
 // MonitorCheck A single monitor check
@@ -45,8 +45,8 @@ type MonitorCheck struct {
 	Name *string `json:"name,omitempty"`
 }
 
-// MonitorChecks A list of monitors + their checks
-type MonitorChecks = []struct {
+// MonitorChecksResponse A list of monitors + their checks
+type MonitorChecksResponse = []struct {
 	// Checks The unique checks for that monitor
 	Checks *[]MonitorCheck `json:"checks,omitempty"`
 
@@ -112,8 +112,8 @@ type MonitorErrorResponse struct {
 	Metadata *PagingMetadata `json:"metadata,omitempty"`
 }
 
-// MonitorInstances A list of monitors + their instances
-type MonitorInstances = []struct {
+// MonitorInstancesResponse A list of monitors + their instances
+type MonitorInstancesResponse = []struct {
 	// Instances The unique instances for that monitor
 	Instances *[]string `json:"instances,omitempty"`
 
@@ -121,8 +121,8 @@ type MonitorInstances = []struct {
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
 }
 
-// MonitorList A list of monitors
-type MonitorList = []struct {
+// MonitorListResponse A list of monitors
+type MonitorListResponse = []struct {
 	// LogicalName The logical name of the monitor
 	LogicalName *string `json:"logical_name,omitempty"`
 
@@ -130,8 +130,8 @@ type MonitorList = []struct {
 	Name *string `json:"name,omitempty"`
 }
 
-// MonitorStatuses A collection of monitor statuses
-type MonitorStatuses = []struct {
+// MonitorStatusesResponse A collection of monitor statuses
+type MonitorStatusesResponse = []struct {
 	// LastChecked The last time this monitor was checked by Metrist
 	LastChecked *string `json:"last_checked,omitempty"`
 
@@ -139,14 +139,14 @@ type MonitorStatuses = []struct {
 	MonitorLogicalName *string `json:"monitor_logical_name,omitempty"`
 
 	// State The state of the monitor up, degraded, issues, down, maintenance
-	State *MonitorStatusesState `json:"state,omitempty"`
+	State *MonitorStatusesResponseState `json:"state,omitempty"`
 }
 
-// MonitorStatusesState The state of the monitor up, degraded, issues, down, maintenance
-type MonitorStatusesState string
+// MonitorStatusesResponseState The state of the monitor up, degraded, issues, down, maintenance
+type MonitorStatusesResponseState string
 
 // MonitorTelemetry A collection of Telemetry Entries
-type MonitorTelemetry = []struct {
+type MonitorTelemetry struct {
 	// Check Check that generated the telemetry
 	Check *string `json:"check,omitempty"`
 
@@ -163,6 +163,9 @@ type MonitorTelemetry = []struct {
 	Value *float32 `json:"value,omitempty"`
 }
 
+// MonitorTelemetryResponse An array of MonitorTelemetry
+type MonitorTelemetryResponse = []MonitorTelemetry
+
 // PagingMetadata Provides cursor data for an API request
 type PagingMetadata struct {
 	// CursorAfter an opaque cursor representing the last row of the current page
@@ -170,6 +173,15 @@ type PagingMetadata struct {
 
 	// CursorBefore an opaque cursor representing the first row of the current page
 	CursorBefore *string `json:"cursor_before,omitempty"`
+}
+
+// StatusPageChangesResponse A collection of Status Page Component Changes
+type StatusPageChangesResponse struct {
+	// Entries Returned values
+	Entries *[]StatusPageComponentChange `json:"entries,omitempty"`
+
+	// Metadata Provides cursor data for an API request
+	Metadata *PagingMetadata `json:"metadata,omitempty"`
 }
 
 // StatusPageComponentChange A single change for a single status page component
@@ -188,15 +200,6 @@ type StatusPageComponentChange struct {
 
 	// Timestamp Time when the change occurred
 	Timestamp *string `json:"timestamp,omitempty"`
-}
-
-// StatusPageComponentChanges A collection of Status Page Component Changes
-type StatusPageComponentChanges struct {
-	// Entries Returned values
-	Entries *[]StatusPageComponentChange `json:"entries,omitempty"`
-
-	// Metadata Provides cursor data for an API request
-	Metadata *PagingMetadata `json:"metadata,omitempty"`
 }
 
 // BackendWebMonitorCheckControllerGetParams defines parameters for BackendWebMonitorCheckControllerGet.
@@ -1311,7 +1314,7 @@ type ClientWithResponsesInterface interface {
 type BackendWebMonitorCheckControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorChecks
+	JSON200      *MonitorChecksResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1397,7 +1400,7 @@ func (r BackendWebMonitorErrorControllerGetResponse) StatusCode() int {
 type BackendWebMonitorInstanceControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorInstances
+	JSON200      *MonitorInstancesResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1419,7 +1422,7 @@ func (r BackendWebMonitorInstanceControllerGetResponse) StatusCode() int {
 type BackendWebMonitorListControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorList
+	JSON200      *MonitorListResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1441,7 +1444,7 @@ func (r BackendWebMonitorListControllerGetResponse) StatusCode() int {
 type BackendWebMonitorStatusControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorStatuses
+	JSON200      *MonitorStatusesResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1463,7 +1466,7 @@ func (r BackendWebMonitorStatusControllerGetResponse) StatusCode() int {
 type BackendWebStatusPageChangeControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *StatusPageComponentChanges
+	JSON200      *StatusPageChangesResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1485,7 +1488,7 @@ func (r BackendWebStatusPageChangeControllerGetResponse) StatusCode() int {
 type BackendWebMonitorTelemetryControllerGetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *MonitorTelemetry
+	JSON200      *MonitorTelemetryResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -1638,7 +1641,7 @@ func ParseBackendWebMonitorCheckControllerGetResponse(rsp *http.Response) (*Back
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorChecks
+		var dest MonitorChecksResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1722,7 +1725,7 @@ func ParseBackendWebMonitorInstanceControllerGetResponse(rsp *http.Response) (*B
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorInstances
+		var dest MonitorInstancesResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1748,7 +1751,7 @@ func ParseBackendWebMonitorListControllerGetResponse(rsp *http.Response) (*Backe
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorList
+		var dest MonitorListResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1774,7 +1777,7 @@ func ParseBackendWebMonitorStatusControllerGetResponse(rsp *http.Response) (*Bac
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorStatuses
+		var dest MonitorStatusesResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1800,7 +1803,7 @@ func ParseBackendWebStatusPageChangeControllerGetResponse(rsp *http.Response) (*
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest StatusPageComponentChanges
+		var dest StatusPageChangesResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1826,7 +1829,7 @@ func ParseBackendWebMonitorTelemetryControllerGetResponse(rsp *http.Response) (*
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest MonitorTelemetry
+		var dest MonitorTelemetryResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -27,7 +27,7 @@ func TestResourceMonitorList(t *testing.T) {
 			name: "serializes list of monitors properly properly",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
-					JSON200: &internal.MonitorList{{LogicalName: ptr("AWS Lambda"), Name: ptr("awslambda")}},
+					JSON200: &internal.MonitorListResponse{{LogicalName: ptr("AWS Lambda"), Name: ptr("awslambda")}},
 				}},
 			},
 			want: backend.CallResourceResponse{
@@ -40,7 +40,7 @@ func TestResourceMonitorList(t *testing.T) {
 			name: "handles empty monitor list",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{monitorListResponse: internal.BackendWebMonitorListControllerGetResponse{
-					JSON200: &internal.MonitorList{},
+					JSON200: &internal.MonitorListResponse{},
 				}},
 			},
 			want: backend.CallResourceResponse{
@@ -70,7 +70,7 @@ func TestResourceChecksList(t *testing.T) {
 			name: "serializes list of checks properly properly with proper combining of monitor names",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{checksResponse: internal.BackendWebMonitorCheckControllerGetResponse{
-					JSON200: &internal.MonitorChecks{
+					JSON200: &internal.MonitorChecksResponse{
 						{
 							Checks: &[]internal.MonitorCheck{
 								{
@@ -102,7 +102,7 @@ func TestResourceChecksList(t *testing.T) {
 			name: "handles empty checks list",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{checksResponse: internal.BackendWebMonitorCheckControllerGetResponse{
-					JSON200: &internal.MonitorChecks{},
+					JSON200: &internal.MonitorChecksResponse{},
 				}},
 			},
 			want: backend.CallResourceResponse{
@@ -132,7 +132,7 @@ func TestInstancesList(t *testing.T) {
 			name: "serializes list of instances properly removing duplicates",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{instancesResponse: internal.BackendWebMonitorInstanceControllerGetResponse{
-					JSON200: &internal.MonitorInstances{
+					JSON200: &internal.MonitorInstancesResponse{
 						{
 							Instances: &[]string{
 								"instance1",
@@ -159,7 +159,7 @@ func TestInstancesList(t *testing.T) {
 			name: "handles empty instances list",
 			args: testArgsWithClientWithResponse{
 				client: &stubClient{instancesResponse: internal.BackendWebMonitorInstanceControllerGetResponse{
-					JSON200: &internal.MonitorInstances{},
+					JSON200: &internal.MonitorInstancesResponse{},
 				}},
 			},
 			want: backend.CallResourceResponse{
